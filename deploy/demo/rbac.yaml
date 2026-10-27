@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: plimsoll
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: plimsoll
+rules:
+  - apiGroups: ["autoscaling.k8s.io"]
+    resources: ["verticalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling.k8s.io"]
+    resources: ["verticalpodautoscalers/status"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: plimsoll
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: plimsoll
+subjects:
+  - kind: ServiceAccount
+    name: plimsoll
+    namespace: kube-system

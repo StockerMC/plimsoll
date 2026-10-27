@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+        - name: demo
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              memory: 50Mi
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: demo
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo
+  recommenders:
+    - name: plimsoll
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["memory"]
+---
+# Same target with no recommender named, so upstream's recommender handles it and ours ignores it.
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: demo-default
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["memory"]

@@ -10,4 +10,10 @@ fi
 kubectl config use-context "kind-$cluster"
 
 kubectl apply -f deploy/metrics-server/components.yaml
+kubectl apply -f deploy/vpa/vpa-v1-crd-gen.yaml
+kubectl apply -f deploy/vpa/vpa-rbac.yaml
+kubectl apply -f deploy/vpa/recommender-deployment.yaml
+
 kubectl -n kube-system rollout status deployment/metrics-server --timeout=3m
+kubectl -n kube-system rollout status deployment/vpa-recommender --timeout=3m
+kubectl -n kube-system get pods

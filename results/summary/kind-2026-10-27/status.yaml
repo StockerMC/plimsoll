@@ -1,0 +1,41 @@
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"autoscaling.k8s.io/v1","kind":"VerticalPodAutoscaler","metadata":{"annotations":{},"name":"demo","namespace":"default"},"spec":{"recommenders":[{"name":"plimsoll"}],"resourcePolicy":{"containerPolicies":[{"containerName":"*","controlledResources":["memory"]}]},"targetRef":{"apiVersion":"apps/v1","kind":"Deployment","name":"demo"},"updatePolicy":{"updateMode":"Off"}}}
+  creationTimestamp: "2026-10-27T02:18:30Z"
+  generation: 1
+  name: demo
+  namespace: default
+  resourceVersion: "18201"
+  uid: c1ee0563-c7c1-4f17-8af2-789762186a03
+spec:
+  recommenders:
+  - name: plimsoll
+  resourcePolicy:
+    containerPolicies:
+    - containerName: '*'
+      controlledResources:
+      - memory
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo
+  updatePolicy:
+    updateMode: "Off"
+status:
+  conditions:
+  - lastTransitionTime: "2026-10-27T02:18:32Z"
+    status: "True"
+    type: RecommendationProvided
+  observedGeneration: 1
+  recommendation:
+    containerRecommendations:
+    - containerName: memload
+      lowerBound:
+        memory: "467222767"
+      target:
+        memory: "628694955"
+      upperBound:
+        memory: "101219887617"

@@ -1,2 +1,3 @@
-// Package kube lists VPA objects and writes their status through the dynamic client.
+// Package kube reads VPA objects and their targets' memory usage through the
+// dynamic client and writes VPA status.
 package kube

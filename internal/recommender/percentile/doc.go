@@ -9,6 +9,6 @@
 // sample a minute. A memory-only port that counted its own daily peaks would
 // put confidence near zero and the upper bound near infinity, so this package
 // counts one sample per instance in every Observe and divides by
-// Options.SamplesPerDay: 1440 live, where every metrics-server scrape is a
-// sample, and 288 in replay, where every five-minute window is one.
+// Options.SamplesPerDay, the number of windows in a day: 288 for the
+// five-minute windows the live binary and the replay both use by default.
 package percentile

@@ -8,19 +8,19 @@ import (
 	"os/signal"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/dynamic"
-
+	"github.com/StockerMC/plimsoll/internal/histogram"
 	"github.com/StockerMC/plimsoll/internal/kube"
+	"github.com/StockerMC/plimsoll/internal/recommender/percentile"
 )
-
-var placeholderTarget = resource.MustParse("256Mi")
 
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig; in-cluster config when empty")
 	name := flag.String("recommender-name", "plimsoll", "handle VPAs whose spec.recommenders names this")
-	interval := flag.Duration("interval", time.Minute, "time between passes")
+	interval := flag.Duration("recommender-interval", time.Minute, "time between passes")
+	window := flag.Duration("memory-window", 5*time.Minute, "window over which each pod's samples are reduced to one peak")
+	aggregation := flag.Duration("memory-aggregation-interval", 24*time.Hour, "window over which each pod keeps one peak in the histogram")
+	halfLife := flag.Duration("memory-histogram-decay-half-life", 24*time.Hour, "half-life of the histogram's decay")
+	minMemoryMB := flag.Float64("pod-recommendation-min-memory-mb", 250, "floor on every memory recommendation")
 	once := flag.Bool("once", false, "run one pass and exit")
 	flag.Parse()
 
@@ -28,11 +28,29 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Upstream's memory buckets from model/aggregations_config.go.
+	buckets, err := histogram.NewExponentialHistogramOptions(1e12, 1e7, 1.05, 1e-4)
+	if err != nil {
+		log.Fatal(err)
+	}
+	l := &loop{
+		client: client,
+		name:   *name,
+		window: *window,
+		opts: percentile.Options{
+			Buckets:             buckets,
+			SamplesPerDay:       float64(24 * time.Hour / *window),
+			MinMemory:           *minMemoryMB * 1024 * 1024,
+			AggregationInterval: *aggregation,
+			HalfLife:            *halfLife,
+		},
+		containers: make(map[string]*container),
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	for {
-		if err := recommend(ctx, client, *name); err != nil {
+		if err := l.runOnce(ctx); err != nil {
 			log.Print(err)
 		}
 		if *once {
@@ -44,32 +62,4 @@ func main() {
 		case <-time.After(*interval):
 		}
 	}
-}
-
-func recommend(ctx context.Context, client dynamic.Interface, recommender string) error {
-	vpas, err := kube.ListVPAs(ctx, client, recommender)
-	if err != nil {
-		return err
-	}
-	for i := range vpas {
-		vpa := &vpas[i]
-		target, err := kube.LookupTarget(ctx, client, vpa)
-		if err != nil {
-			log.Print(err)
-			continue
-		}
-		var rec kube.Recommendation
-		for _, c := range target.Containers {
-			rec.ContainerRecommendations = append(rec.ContainerRecommendations, kube.ContainerRecommendation{
-				ContainerName: c,
-				Target:        corev1.ResourceList{corev1.ResourceMemory: placeholderTarget},
-			})
-		}
-		if err := kube.PatchStatus(ctx, client, vpa, kube.ProvidedStatus(vpa, rec, time.Now())); err != nil {
-			log.Print(err)
-			continue
-		}
-		log.Printf("%s/%s: memory target %s for %d containers", vpa.GetNamespace(), vpa.GetName(), placeholderTarget.String(), len(target.Containers))
-	}
-	return nil
 }

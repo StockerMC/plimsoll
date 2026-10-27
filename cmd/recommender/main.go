@@ -53,13 +53,13 @@ func recommend(ctx context.Context, client dynamic.Interface, recommender string
 	}
 	for i := range vpas {
 		vpa := &vpas[i]
-		containers, err := kube.TargetContainers(ctx, client, vpa)
+		target, err := kube.LookupTarget(ctx, client, vpa)
 		if err != nil {
 			log.Print(err)
 			continue
 		}
 		var rec kube.Recommendation
-		for _, c := range containers {
+		for _, c := range target.Containers {
 			rec.ContainerRecommendations = append(rec.ContainerRecommendations, kube.ContainerRecommendation{
 				ContainerName: c,
 				Target:        corev1.ResourceList{corev1.ResourceMemory: placeholderTarget},
@@ -69,7 +69,7 @@ func recommend(ctx context.Context, client dynamic.Interface, recommender string
 			log.Print(err)
 			continue
 		}
-		log.Printf("%s/%s: memory target %s for %d containers", vpa.GetNamespace(), vpa.GetName(), placeholderTarget.String(), len(containers))
+		log.Printf("%s/%s: memory target %s for %d containers", vpa.GetNamespace(), vpa.GetName(), placeholderTarget.String(), len(target.Containers))
 	}
 	return nil
 }

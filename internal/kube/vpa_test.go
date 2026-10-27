@@ -31,7 +31,10 @@ func newDeployment(namespace, name string, containers ...string) *unstructured.U
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
 		"metadata":   map[string]any{"namespace": namespace, "name": name},
-		"spec":       map[string]any{"template": map[string]any{"spec": map[string]any{"containers": specs}}},
+		"spec": map[string]any{
+			"selector": map[string]any{"matchLabels": map[string]any{"app": name}},
+			"template": map[string]any{"spec": map[string]any{"containers": specs}},
+		},
 	}}
 }
 
@@ -50,16 +53,19 @@ func TestListVPAs(t *testing.T) {
 	}
 }
 
-func TestTargetContainers(t *testing.T) {
+func TestLookupTarget(t *testing.T) {
 	vpa := newVPA("default", "demo", "plimsoll")
 	client := newClient(&vpa, newDeployment("default", "demo", "app", "sidecar"))
 
-	got, err := TargetContainers(context.Background(), client, &vpa)
+	got, err := LookupTarget(context.Background(), client, &vpa)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got[0] != "app" || got[1] != "sidecar" {
-		t.Fatalf("got containers %v, want [app sidecar]", got)
+	if len(got.Containers) != 2 || got.Containers[0] != "app" || got.Containers[1] != "sidecar" {
+		t.Errorf("got containers %v, want [app sidecar]", got.Containers)
+	}
+	if got.Selector != "app=demo" {
+		t.Errorf("got selector %q, want app=demo", got.Selector)
 	}
 }
 

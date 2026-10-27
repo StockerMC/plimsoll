@@ -7,6 +7,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
@@ -26,25 +27,42 @@ func ListVPAs(ctx context.Context, client dynamic.Interface, recommender string)
 	return FilterVPAs(list.Items, recommender), nil
 }
 
-// TargetContainers returns the container names of the Deployment a VPA points at.
-func TargetContainers(ctx context.Context, client dynamic.Interface, vpa *unstructured.Unstructured) ([]string, error) {
+// Target is what a VPA points at: the container names of its Deployment and
+// the label selector that finds the Deployment's pods.
+type Target struct {
+	Containers []string
+	Selector   string
+}
+
+// LookupTarget reads the Deployment a VPA points at.
+func LookupTarget(ctx context.Context, client dynamic.Interface, vpa *unstructured.Unstructured) (Target, error) {
 	kind, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "kind")
 	name, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "name")
 	if kind != "Deployment" {
-		return nil, fmt.Errorf("targetRef kind %q: only Deployment is supported", kind)
+		return Target{}, fmt.Errorf("targetRef kind %q: only Deployment is supported", kind)
 	}
 	deployment, err := client.Resource(deploymentResource).Namespace(vpa.GetNamespace()).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("get deployment %s/%s: %w", vpa.GetNamespace(), name, err)
+		return Target{}, fmt.Errorf("get deployment %s/%s: %w", vpa.GetNamespace(), name, err)
 	}
+	var selector metav1.LabelSelector
+	raw, _, _ := unstructured.NestedMap(deployment.Object, "spec", "selector")
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(raw, &selector); err != nil {
+		return Target{}, fmt.Errorf("deployment %s/%s selector: %w", vpa.GetNamespace(), name, err)
+	}
+	parsed, err := metav1.LabelSelectorAsSelector(&selector)
+	if err != nil {
+		return Target{}, fmt.Errorf("deployment %s/%s selector: %w", vpa.GetNamespace(), name, err)
+	}
+	var target Target
+	target.Selector = parsed.String()
 	containers, _, _ := unstructured.NestedSlice(deployment.Object, "spec", "template", "spec", "containers")
-	names := make([]string, 0, len(containers))
 	for _, c := range containers {
 		if name, ok := c.(map[string]any)["name"].(string); ok {
-			names = append(names, name)
+			target.Containers = append(target.Containers, name)
 		}
 	}
-	return names, nil
+	return target, nil
 }
 
 // PatchStatus replaces a VPA's status. The CRD serves status as a subresource,

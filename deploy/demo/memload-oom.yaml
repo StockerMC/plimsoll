@@ -1,0 +1,35 @@
+# Same ramp as memload.yaml with the limit below it, so the container is
+# OOMKilled at the fifth step and restarts.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+        - name: memload
+          image: python:3.13-alpine
+          command: ["python3", "-u", "-c"]
+          args:
+            - |
+              import time
+              held = []
+              for step in range(8):
+                  held.append(b"x" * (64 << 20))
+                  print(f"holding {64 * len(held)} MiB", flush=True)
+                  time.sleep(15)
+              while True:
+                  time.sleep(60)
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 320Mi

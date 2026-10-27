@@ -16,6 +16,7 @@ import (
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig; in-cluster config when empty")
 	name := flag.String("recommender-name", "plimsoll", "handle VPAs whose spec.recommenders names this")
+	namespace := flag.String("vpa-object-namespace", "", "only handle VPAs in this namespace; all namespaces when empty")
 	interval := flag.Duration("recommender-interval", time.Minute, "time between passes")
 	window := flag.Duration("memory-window", 5*time.Minute, "window over which each pod's samples are reduced to one peak")
 	aggregation := flag.Duration("memory-aggregation-interval", 24*time.Hour, "window over which each pod keeps one peak in the histogram")
@@ -34,9 +35,10 @@ func main() {
 		log.Fatal(err)
 	}
 	l := &loop{
-		client: client,
-		name:   *name,
-		window: *window,
+		client:    client,
+		name:      *name,
+		namespace: *namespace,
+		window:    *window,
 		opts: percentile.Options{
 			Buckets:             buckets,
 			SamplesPerDay:       float64(24 * time.Hour / *window),

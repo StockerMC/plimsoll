@@ -20,6 +20,7 @@ import (
 type loop struct {
 	client     dynamic.Interface
 	name       string
+	namespace  string
 	window     time.Duration
 	opts       percentile.Options
 	containers map[string]*container
@@ -33,7 +34,7 @@ type container struct {
 }
 
 func (l *loop) runOnce(ctx context.Context) error {
-	vpas, err := kube.ListVPAs(ctx, l.client, l.name)
+	vpas, err := kube.ListVPAs(ctx, l.client, l.namespace, l.name)
 	if err != nil {
 		return err
 	}

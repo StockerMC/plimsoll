@@ -18,9 +18,10 @@ var (
 	deploymentResource = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
 )
 
-// ListVPAs returns the VPAs in every namespace that the named recommender handles.
-func ListVPAs(ctx context.Context, client dynamic.Interface, recommender string) ([]unstructured.Unstructured, error) {
-	list, err := client.Resource(vpaResource).Namespace(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+// ListVPAs returns the VPAs in namespace that the named recommender handles,
+// or in every namespace when namespace is empty.
+func ListVPAs(ctx context.Context, client dynamic.Interface, namespace, recommender string) ([]unstructured.Unstructured, error) {
+	list, err := client.Resource(vpaResource).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("list vpas: %w", err)
 	}

@@ -2,6 +2,7 @@ package kube
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -43,14 +44,30 @@ func TestListVPAs(t *testing.T) {
 	ours := newVPA("default", "demo", "plimsoll")
 	upstream := newVPA("default", "demo-default")
 	other := newVPA("other", "perf", "performance")
-	client := newClient(&ours, &upstream, &other)
+	scenario := newVPA("scenario", "ours", "plimsoll")
+	client := newClient(&ours, &upstream, &other, &scenario)
 
-	got, err := ListVPAs(context.Background(), client, "plimsoll")
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		namespace string
+		want      []string
+	}{
+		{namespace: "", want: []string{"default/demo", "scenario/ours"}},
+		{namespace: "scenario", want: []string{"scenario/ours"}},
+		{namespace: "other", want: nil},
 	}
-	if len(got) != 1 || got[0].GetName() != "demo" {
-		t.Fatalf("got %d vpas, want only demo", len(got))
+	for _, tt := range tests {
+		got, err := ListVPAs(context.Background(), client, tt.namespace, "plimsoll")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var names []string
+		for _, v := range got {
+			names = append(names, v.GetNamespace()+"/"+v.GetName())
+		}
+		slices.Sort(names)
+		if !slices.Equal(names, tt.want) {
+			t.Errorf("namespace %q: got %v, want %v", tt.namespace, names, tt.want)
+		}
 	}
 }
 

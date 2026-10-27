@@ -1,4 +1,4 @@
-.PHONY: test vet kind-up kind-down smoke demo
+.PHONY: test vet kind-up kind-down smoke demo scenarios
 
 test: vet
 	go test ./...
@@ -17,3 +17,6 @@ smoke:
 
 demo:
 	scripts/demo.sh $(DEMO)
+
+scenarios:
+	scripts/scenarios.sh $(SCENARIOS)

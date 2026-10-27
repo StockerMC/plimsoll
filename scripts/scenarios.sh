@@ -88,7 +88,11 @@ run() {
 	kubectl delete namespace "$ns" --wait=false >/dev/null
 }
 
-# Fresh upstream state: its in-memory histograms outlive deleted VPAs for up to an hour.
+# Fresh upstream state: its in-memory histograms outlive deleted VPAs for up to an hour,
+# and on start it reloads checkpoints left in any scenario namespace from an earlier run.
+for ns in $(kubectl get namespaces -o name | grep '^namespace/scenario-' || true); do
+	kubectl delete "$ns" --wait >/dev/null
+done
 kubectl -n kube-system rollout restart deployment/vpa-recommender >/dev/null
 kubectl -n kube-system rollout status deployment/vpa-recommender --timeout=3m >/dev/null
 

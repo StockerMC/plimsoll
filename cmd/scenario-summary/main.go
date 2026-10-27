@@ -90,7 +90,8 @@ func writeMarkdown(w io.Writer, results []result) error {
 	for i := range rule {
 		rule[i] = "---"
 	}
-	text := row(header) + row(rule)
+	text := fmt.Sprintf("settle_s: seconds from the last event, or the start, until the target stays within %.0f%% of its final value.\n\n", tolerance*100)
+	text += row(header) + row(rule)
 	for _, r := range results {
 		text += row(columns(r))
 	}

@@ -23,8 +23,11 @@ type Recommendation struct {
 	Upper  float64
 }
 
-// Recommender turns window samples into a memory recommendation.
+// Recommender turns window samples into a memory recommendation. RecordOOM
+// is called by the live binary when instance was OOMKilled at request; the
+// replay never calls it because the trace records no kills.
 type Recommender interface {
 	Observe(Sample)
+	RecordOOM(instance string, at time.Time, request float64) error
 	Recommend() Recommendation
 }

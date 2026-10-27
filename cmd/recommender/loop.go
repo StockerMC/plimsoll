@@ -26,10 +26,6 @@ type loop struct {
 	oom        map[string]*kube.OOMDetector
 }
 
-type oomRecorder interface {
-	RecordOOM(instance string, at time.Time, request float64) error
-}
-
 // container is the state kept for one container of one VPA between passes.
 type container struct {
 	windows *kube.Aggregator
@@ -103,11 +99,7 @@ func (l *loop) container(vpa *unstructured.Unstructured, name string) *container
 }
 
 func (l *loop) recordOOM(c *container, o kube.OOM) {
-	r, ok := c.model.(oomRecorder)
-	if !ok {
-		return
-	}
-	if err := r.RecordOOM(o.Pod, o.Time, o.Request); err != nil {
+	if err := c.model.RecordOOM(o.Pod, o.Time, o.Request); err != nil {
 		log.Printf("oom %s/%s: %v", o.Pod, o.Container, err)
 		return
 	}

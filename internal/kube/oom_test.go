@@ -35,6 +35,17 @@ func newPod(name, request string, restarts int32, reason string) corev1.Pod {
 	}
 }
 
+func withSidecar(p corev1.Pod) corev1.Pod {
+	p.Spec.Containers = append([]corev1.Container{{
+		Name: "sidecar",
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("64Mi")},
+		},
+	}}, p.Spec.Containers...)
+	p.Status.ContainerStatuses = append(p.Status.ContainerStatuses, corev1.ContainerStatus{Name: "sidecar"})
+	return p
+}
+
 func TestOOMDetectorScan(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -43,9 +54,15 @@ func TestOOMDetectorScan(t *testing.T) {
 		want   []OOM
 	}{
 		{
-			name:   "restart with OOMKilled records the request",
+			name:   "restart with OOMKilled records the request, not the 1Gi limit it was killed at",
 			before: newPod("demo-1", "256Mi", 0, ""),
 			after:  newPod("demo-1", "256Mi", 1, "OOMKilled"),
+			want:   []OOM{{Pod: "demo-1", Container: "app", Request: 256 << 20, Time: killedAt}},
+		},
+		{
+			name:   "the killed container's request, not its neighbour's",
+			before: withSidecar(newPod("demo-1", "256Mi", 0, "")),
+			after:  withSidecar(newPod("demo-1", "256Mi", 1, "OOMKilled")),
 			want:   []OOM{{Pod: "demo-1", Container: "app", Request: 256 << 20, Time: killedAt}},
 		},
 		{

@@ -18,6 +18,10 @@ type Options struct {
 	// Floor on every recommendation, in the units of the peaks. Upstream uses
 	// 250 MiB per pod; the replay uses 0.
 	MinMemory float64
+	// Window over which each task keeps one peak, and half-life of the
+	// histogram's decay. Zero means upstream's 24 h.
+	AggregationInterval time.Duration
+	HalfLife            time.Duration
 }
 
 // Recommender is the upstream VPA memory recommender: a decaying histogram of
@@ -35,9 +39,15 @@ var _ recommender.Recommender = (*Recommender)(nil)
 
 // New returns an empty Recommender.
 func New(opts Options) *Recommender {
+	if opts.AggregationInterval == 0 {
+		opts.AggregationInterval = defaultAggregationInterval
+	}
+	if opts.HalfLife == 0 {
+		opts.HalfLife = defaultHalfLife
+	}
 	return &Recommender{
 		opts:      opts,
-		peaks:     histogram.NewDecayingHistogram(opts.Buckets, halfLife),
+		peaks:     histogram.NewDecayingHistogram(opts.Buckets, opts.HalfLife),
 		instances: make(map[string]*instance),
 	}
 }
@@ -48,7 +58,7 @@ func (r *Recommender) Observe(s recommender.Sample) {
 		return
 	}
 	for _, p := range s.Peaks {
-		r.instance(p.Instance).add(r.peaks, p.Peak, s.Time, false)
+		r.instance(p.Instance).add(r.peaks, p.Peak, s.Time, false, r.opts.AggregationInterval)
 	}
 	r.samples += len(s.Peaks)
 	if r.first.IsZero() || s.Time.Before(r.first) {
@@ -78,12 +88,12 @@ func (r *Recommender) Recommend() recommender.Recommendation {
 // from the window's real peak if that is higher than the request.
 func (r *Recommender) RecordOOM(instance string, at time.Time, request float64) error {
 	s := r.instance(instance)
-	if !s.lastSample.IsZero() && at.Before(s.lastSample.Add(-aggregationInterval)) {
+	if !s.lastSample.IsZero() && at.Before(s.lastSample.Add(-r.opts.AggregationInterval)) {
 		return fmt.Errorf("oom at %v is older than the aggregation interval", at)
 	}
 	used := math.Max(request, s.peak)
 	needed := math.Max(used+oomMinBumpUp, used*oomBumpUpRatio)
-	if !s.add(r.peaks, needed, at, true) {
+	if !s.add(r.peaks, needed, at, true, r.opts.AggregationInterval) {
 		return errors.New("oom sample discarded")
 	}
 	return nil

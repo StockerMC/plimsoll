@@ -9,10 +9,10 @@ import (
 
 // Defaults from upstream model/aggregations_config.go.
 const (
-	aggregationInterval = 24 * time.Hour
-	halfLife            = 24 * time.Hour
-	oomBumpUpRatio      = 1.2
-	oomMinBumpUp        = 100 * 1024 * 1024
+	defaultAggregationInterval = 24 * time.Hour
+	defaultHalfLife            = 24 * time.Hour
+	oomBumpUpRatio             = 1.2
+	oomMinBumpUp               = 100 * 1024 * 1024
 )
 
 // instance keeps one peak per aggregation interval for one task, the port of
@@ -26,7 +26,7 @@ type instance struct {
 
 // add puts value into the current window, replacing the window's peak in the
 // histogram if value is larger, or opens the window that holds at.
-func (s *instance) add(h histogram.Histogram, value float64, at time.Time, oom bool) bool {
+func (s *instance) add(h histogram.Histogram, value float64, at time.Time, oom bool, interval time.Duration) bool {
 	if value < 0 || (!oom && at.Before(s.lastSample)) {
 		return false
 	}
@@ -42,7 +42,7 @@ func (s *instance) add(h histogram.Histogram, value float64, at time.Time, oom b
 			addPeak = true
 		}
 	} else {
-		shift := at.Sub(s.windowEnd).Truncate(aggregationInterval) + aggregationInterval
+		shift := at.Sub(s.windowEnd).Truncate(interval) + interval
 		s.windowEnd = s.windowEnd.Add(shift)
 		s.peak = 0
 		s.oomPeak = 0

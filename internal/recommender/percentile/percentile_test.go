@@ -112,3 +112,22 @@ func TestReplayConfidenceAfterOneDay(t *testing.T) {
 		t.Errorf("confidence = %v, want about 1.0", c)
 	}
 }
+
+// With a two minute window, the second sample replaces the first and the
+// third opens a new window, so the histogram holds buckets 5 and 3.
+func TestAggregationIntervalOption(t *testing.T) {
+	units, err := histogram.NewLinearHistogramOptions(10, 1, 1e-15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := New(Options{Buckets: units, SamplesPerDay: 720, AggregationInterval: 2 * time.Minute, HalfLife: 10 * time.Minute})
+	for i, peak := range []float64{3.5, 5.5, 3.5} {
+		r.Observe(recommender.Sample{Time: day0.Add(time.Duration(i) * time.Minute), Peaks: one("a", peak)})
+	}
+	if got := r.peaks.Percentile(0); got != 4 {
+		t.Errorf("Percentile(0) = %v, want 4 (top of bucket 3)", got)
+	}
+	if got := r.peaks.Percentile(1); got != 6 {
+		t.Errorf("Percentile(1) = %v, want 6 (top of bucket 5)", got)
+	}
+}

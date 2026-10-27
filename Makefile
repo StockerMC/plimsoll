@@ -16,4 +16,4 @@ smoke:
 	scripts/smoke.sh
 
 demo:
-	scripts/demo.sh
+	scripts/demo.sh $(DEMO)

@@ -68,6 +68,8 @@ func TestPatchStatus(t *testing.T) {
 	status := ProvidedStatus(&vpa, Recommendation{ContainerRecommendations: []ContainerRecommendation{{
 		ContainerName: "app",
 		Target:        corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("256Mi")},
+		LowerBound:    corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("200Mi")},
+		UpperBound:    corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 	}}}, now)
 
 	if err := PatchStatus(context.Background(), client, &vpa, status); err != nil {
@@ -81,9 +83,11 @@ func TestPatchStatus(t *testing.T) {
 	if len(recs) != 1 {
 		t.Fatalf("got %d container recommendations, want 1", len(recs))
 	}
-	memory, _, _ := unstructured.NestedString(recs[0].(map[string]any), "target", "memory")
-	if memory != "256Mi" {
-		t.Errorf("target memory %q, want 256Mi", memory)
+	for field, want := range map[string]string{"target": "256Mi", "lowerBound": "200Mi", "upperBound": "1Gi"} {
+		memory, _, _ := unstructured.NestedString(recs[0].(map[string]any), field, "memory")
+		if memory != want {
+			t.Errorf("%s memory %q, want %s", field, memory, want)
+		}
 	}
 	generation, _, _ := unstructured.NestedInt64(got.Object, "status", "observedGeneration")
 	if generation != 1 {

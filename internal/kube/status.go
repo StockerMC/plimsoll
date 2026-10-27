@@ -22,6 +22,8 @@ type Recommendation struct {
 type ContainerRecommendation struct {
 	ContainerName string              `json:"containerName"`
 	Target        corev1.ResourceList `json:"target"`
+	LowerBound    corev1.ResourceList `json:"lowerBound,omitempty"`
+	UpperBound    corev1.ResourceList `json:"upperBound,omitempty"`
 }
 
 type Condition struct {

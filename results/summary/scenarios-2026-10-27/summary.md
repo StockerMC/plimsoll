@@ -1,0 +1,12 @@
+settle_s: seconds from the last event, or the start, until the target stays within 10% of its final value.
+
+| scenario | recommender | final_target_mib | min_target_mib | max_target_mib | oom_kills | settle_s |
+| --- | --- | --- | --- | --- | --- | --- |
+| steady | ours | 454 | 250 | 454 | 0 | 195 |
+| steady | upstream | 454 | 392 | 454 | 0 | 120 |
+| burst | ours | 600 | 250 | 600 | 1 | 315 |
+| burst | upstream | 600 | 250 | 600 | 1 | 285 |
+| restart | ours | 454 | 250 | 454 | 0 | 75 |
+| restart | upstream | 454 | 250 | 454 | 0 | 0 |
+| missing-metrics | ours | 454 | 250 | 454 | 0 | 0 |
+| missing-metrics | upstream | 454 | 250 | 454 | 0 | 0 |

@@ -10,13 +10,13 @@ import (
 	"github.com/StockerMC/plimsoll/internal/recommender"
 )
 
-// Options are the inputs that differ between the live binary and the replay.
+// Options configure a Recommender.
 type Options struct {
 	Buckets histogram.HistogramOptions
-	// Samples that make one day of history: 1440 live, 288 in replay.
+	// Samples that make one day of history, 24h divided by the memory window.
 	SamplesPerDay float64
 	// Floor on every recommendation, in the units of the peaks. Upstream uses
-	// 250 MiB per pod; the replay uses 0.
+	// 250 MiB per pod.
 	MinMemory float64
 	// Window over which each task keeps one peak, and half-life of the
 	// histogram's decay. Zero means upstream's 24 h.

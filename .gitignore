@@ -1,9 +1,4 @@
-# Trace pulls and raw replay output are never committed.
-data/
-!data/README.md
 results/raw/
-*.csv.gz
-!internal/trace/testdata/*.csv.gz
 
 # Build output
 bin/

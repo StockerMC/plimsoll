@@ -9,7 +9,7 @@ type InstancePeak struct {
 }
 
 // Sample is one window: its start time and the peak of every task alive in
-// it, keyed by pod name live and by instance index in replay.
+// it, keyed by instance.
 type Sample struct {
 	Time  time.Time
 	Peaks []InstancePeak
@@ -24,8 +24,7 @@ type Recommendation struct {
 }
 
 // Recommender turns window samples into a memory recommendation. RecordOOM
-// is called by the live binary when instance was OOMKilled at request; the
-// replay never calls it because the trace records no kills.
+// is called when instance was OOMKilled at request.
 type Recommender interface {
 	Observe(Sample)
 	RecordOOM(instance string, at time.Time, request float64) error

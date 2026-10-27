@@ -1,2 +1,2 @@
-// Package recommender defines the interface shared by the live recommender and the replay.
+// Package recommender defines the memory recommender interface.
 package recommender

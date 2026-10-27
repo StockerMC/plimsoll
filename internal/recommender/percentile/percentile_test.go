@@ -98,7 +98,7 @@ func TestPerTaskDailyPeak(t *testing.T) {
 	}
 }
 
-func TestReplayConfidenceAfterOneDay(t *testing.T) {
+func TestConfidenceAfterOneDay(t *testing.T) {
 	r := New(Options{Buckets: memoryOptions, SamplesPerDay: 288})
 	for i := 0; i < 288; i++ {
 		r.Observe(recommender.Sample{

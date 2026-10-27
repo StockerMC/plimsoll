@@ -10,5 +10,5 @@
 // put confidence near zero and the upper bound near infinity, so this package
 // counts one sample per instance in every Observe and divides by
 // Options.SamplesPerDay, the number of windows in a day: 288 for the
-// five-minute windows the live binary and the replay both use by default.
+// five-minute windows the live binary uses by default.
 package percentile

@@ -1,4 +1,4 @@
-.PHONY: test vet kind-up kind-down
+.PHONY: test vet kind-up kind-down smoke
 
 test: vet
 	go test ./...
@@ -11,3 +11,6 @@ kind-up:
 
 kind-down:
 	scripts/kind-down.sh
+
+smoke:
+	scripts/smoke.sh

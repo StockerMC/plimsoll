@@ -66,8 +66,8 @@ func TestSummarize(t *testing.T) {
 	csv := `elapsed_s,event,ours_target,upstream_target,ours_restarts,ours_reason,upstream_restarts,upstream_reason
 0,,,,0,,0,
 15,,250Mi,,0,,0,
-30,,480Mi,300Mi,1,OOMKilled,1,OOMKilled
-45,,450Mi,,2,OOMKilled,1,OOMKilled`
+30,,480Mi,300Mi,1,OOMKilled,1,Error
+45,,450Mi,,2,OOMKilled,2,OOMKilled`
 	series, err := readSeries(strings.NewReader(csv))
 	if err != nil {
 		t.Fatal(err)

@@ -10,13 +10,14 @@ type stats struct {
 
 func summarize(series []sample, side int, tol float64) stats {
 	st := stats{min: math.Inf(1), settle: -1}
-	for _, s := range series {
+	for i, s := range series {
 		if t := s.target[side]; t > 0 {
 			st.min = math.Min(st.min, t)
 			st.max = math.Max(st.max, t)
 		}
-		if s.reason[side] == "OOMKilled" && s.restarts[side] > st.oomKills {
-			st.oomKills = s.restarts[side]
+		// Several restarts between two samples all count as the last reason.
+		if i > 0 && s.reason[side] == "OOMKilled" {
+			st.oomKills += max(s.restarts[side]-series[i-1].restarts[side], 0)
 		}
 	}
 	if len(series) == 0 || series[len(series)-1].target[side] == 0 {

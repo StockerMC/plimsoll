@@ -96,7 +96,7 @@ kubectl -n kube-system rollout status deployment/vpa-recommender --timeout=3m >/
 for s in "$@"; do
 	case $s in
 	steady) run steady steady 300 no_event ;;
-	burst) run burst burst 420 no_event ;;
+	burst) run burst burst 600 no_event ;;
 	restart) run restart steady 480 restart_event ;;
 	missing-metrics)
 		run missing-metrics steady 480 metrics_event

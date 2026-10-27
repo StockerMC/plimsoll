@@ -11,13 +11,14 @@ data:
         time.sleep(10)
     while True:
         time.sleep(60)
+  # Spikes outlast two one-minute recommender passes so neither side can miss one.
   burst.py: |
     import time
     base = b"x" * (128 << 20)
     for extra in (128, 256, 384):
-        time.sleep(60)
+        time.sleep(30)
         spike = b"x" * (extra << 20)
-        time.sleep(45)
+        time.sleep(150)
         del spike
     while True:
         time.sleep(60)

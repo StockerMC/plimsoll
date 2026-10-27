@@ -18,6 +18,7 @@ func newClient(objects ...runtime.Object) *fake.FakeDynamicClient {
 	listKinds := map[schema.GroupVersionResource]string{
 		vpaResource:        "VerticalPodAutoscalerList",
 		podMetricsResource: "PodMetricsList",
+		podResource:        "PodList",
 	}
 	return fake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds, objects...)
 }

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: memload
+data:
+  steady.py: |
+    import time
+    held = []
+    for _ in range(6):
+        held.append(b"x" * (64 << 20))
+        time.sleep(10)
+    while True:
+        time.sleep(60)
+  burst.py: |
+    import time
+    base = b"x" * (128 << 20)
+    for extra in (128, 256, 384):
+        time.sleep(60)
+        spike = b"x" * (extra << 20)
+        time.sleep(45)
+        del spike
+    while True:
+        time.sleep(60)

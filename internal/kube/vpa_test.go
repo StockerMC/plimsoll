@@ -11,12 +11,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/fake"
 )
 
-func newClient(objects ...runtime.Object) dynamic.Interface {
-	listKinds := map[schema.GroupVersionResource]string{vpaResource: "VerticalPodAutoscalerList"}
+func newClient(objects ...runtime.Object) *fake.FakeDynamicClient {
+	listKinds := map[schema.GroupVersionResource]string{
+		vpaResource:        "VerticalPodAutoscalerList",
+		podMetricsResource: "PodMetricsList",
+	}
 	return fake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds, objects...)
 }
 

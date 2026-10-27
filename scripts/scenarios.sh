@@ -13,7 +13,7 @@ go build -o bin/scenario-summary ./cmd/scenario-summary
 
 ours=
 start_ours() {
-	bin/recommender --memory-window=1m >>"$raw/$name-ours.log" 2>&1 &
+	bin/recommender --vpa-object-namespace="$ns" --memory-window=1m >>"$raw/$name-ours.log" 2>&1 &
 	ours=$!
 }
 stop_ours() {

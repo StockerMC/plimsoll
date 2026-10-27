@@ -8,8 +8,8 @@ type InstancePeak struct {
 	Peak     float64
 }
 
-// Sample is one five-minute window: its start time and the peak of every
-// task alive in it, keyed by pod name live and by instance index in replay.
+// Sample is one window: its start time and the peak of every task alive in
+// it, keyed by pod name live and by instance index in replay.
 type Sample struct {
 	Time  time.Time
 	Peaks []InstancePeak

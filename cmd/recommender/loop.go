@@ -23,6 +23,11 @@ type loop struct {
 	window     time.Duration
 	opts       percentile.Options
 	containers map[string]*container
+	oom        map[string]*kube.OOMDetector
+}
+
+type oomRecorder interface {
+	RecordOOM(instance string, at time.Time, request float64) error
 }
 
 // container is the state kept for one container of one VPA between passes.
@@ -53,6 +58,11 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	if err != nil {
 		return err
 	}
+	pods, err := kube.ListPods(ctx, l.client, vpa.GetNamespace(), target.Selector)
+	if err != nil {
+		return err
+	}
+	ooms := l.detector(vpa).Scan(pods)
 	var rec kube.Recommendation
 	for _, name := range target.Containers {
 		c := l.container(vpa, name)
@@ -62,6 +72,11 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 			}
 			if s, ok := c.windows.Add(u.Pod, u.Bytes, u.Time); ok {
 				c.model.Observe(s)
+			}
+		}
+		for _, o := range ooms {
+			if o.Container == name {
+				l.recordOOM(c, o)
 			}
 		}
 		r := c.model.Recommend()
@@ -85,6 +100,28 @@ func (l *loop) container(vpa *unstructured.Unstructured, name string) *container
 		l.containers[key] = c
 	}
 	return c
+}
+
+func (l *loop) recordOOM(c *container, o kube.OOM) {
+	r, ok := c.model.(oomRecorder)
+	if !ok {
+		return
+	}
+	if err := r.RecordOOM(o.Pod, o.Time, o.Request); err != nil {
+		log.Printf("oom %s/%s: %v", o.Pod, o.Container, err)
+		return
+	}
+	log.Printf("oom %s/%s at %s: recorded request %s", o.Pod, o.Container, o.Time.Format(time.TimeOnly), quantity(o.Request))
+}
+
+func (l *loop) detector(vpa *unstructured.Unstructured) *kube.OOMDetector {
+	key := vpa.GetNamespace() + "/" + vpa.GetName()
+	d, ok := l.oom[key]
+	if !ok {
+		d = kube.NewOOMDetector()
+		l.oom[key] = d
+	}
+	return d
 }
 
 func memory(bytes float64) corev1.ResourceList {

@@ -45,6 +45,7 @@ func main() {
 			HalfLife:            *halfLife,
 		},
 		containers: make(map[string]*container),
+		oom:        make(map[string]*kube.OOMDetector),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

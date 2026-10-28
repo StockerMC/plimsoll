@@ -34,7 +34,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		series, err := readSeries(f)
+		sides, series, err := readSeries(f)
 		f.Close()
 		if err != nil {
 			log.Fatalf("%s: %v", name, err)

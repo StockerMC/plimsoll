@@ -51,6 +51,55 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: ensemble
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ensemble
+  template:
+    metadata:
+      labels:
+        app: ensemble
+    spec:
+      containers:
+        - name: memload
+          image: python:3.13-alpine
+          command: ["python3", "-u", "/memload/burst.py"]
+          volumeMounts:
+            - name: memload
+              mountPath: /memload
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: memload
+          configMap:
+            name: memload
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ensemble
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ensemble
+  recommenders:
+    - name: plimsoll-ensemble
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["memory"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
   name: upstream
 spec:
   replicas: 1

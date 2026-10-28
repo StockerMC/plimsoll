@@ -1,4 +1,4 @@
-# Two identical workloads; VPA ours names plimsoll, VPA upstream is left to the default recommender.
+# Three identical workloads; VPA ours names plimsoll, ensemble names plimsoll-ensemble, upstream is left to the default recommender.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,6 +39,53 @@ spec:
     name: ours
   recommenders:
     - name: plimsoll
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["memory"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ensemble
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ensemble
+  template:
+    metadata:
+      labels:
+        app: ensemble
+    spec:
+      containers:
+        - name: memload
+          image: python:3.13-alpine
+          command: ["python3", "-u", "/memload/steady.py"]
+          volumeMounts:
+            - name: memload
+              mountPath: /memload
+          resources:
+            requests:
+              memory: 128Mi
+      volumes:
+        - name: memload
+          configMap:
+            name: memload
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ensemble
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ensemble
+  recommenders:
+    - name: plimsoll-ensemble
   updatePolicy:
     updateMode: "Off"
   resourcePolicy:

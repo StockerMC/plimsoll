@@ -22,16 +22,17 @@ stop_ours() {
 }
 trap stop_ours EXIT
 
+sides="ours ensemble upstream"
 target='{.status.recommendation.containerRecommendations[0].target.memory}'
 restarts='{.items[0].status.containerStatuses[0].restartCount}'
 reason='{.items[0].status.containerStatuses[0].lastState.terminated.reason}'
 
 sample() {
 	row="$1,$2"
-	for side in ours upstream; do
+	for side in $sides; do
 		row="$row,$(kubectl -n "$ns" get vpa "$side" -o jsonpath="$target" 2>/dev/null || true)"
 	done
-	for side in ours upstream; do
+	for side in $sides; do
 		row="$row,$(kubectl -n "$ns" get pod -l app="$side" -o jsonpath="$restarts" 2>/dev/null || true)"
 		row="$row,$(kubectl -n "$ns" get pod -l app="$side" -o jsonpath="$reason" 2>/dev/null || true)"
 	done
@@ -69,8 +70,11 @@ run() {
 	kubectl delete namespace "$ns" --ignore-not-found --wait >/dev/null
 	kubectl create namespace "$ns" >/dev/null
 	kubectl -n "$ns" apply -f deploy/scenarios/memload.yaml -f "deploy/scenarios/$2.yaml" >/dev/null
-	kubectl -n "$ns" rollout status deployment/ours deployment/upstream --timeout=3m >/dev/null
-	echo "elapsed_s,event,ours_target,upstream_target,ours_restarts,ours_reason,upstream_restarts,upstream_reason" >"$out/$name.csv"
+	kubectl -n "$ns" rollout status deployment/ours deployment/ensemble deployment/upstream --timeout=3m >/dev/null
+	header=elapsed_s,event
+	for side in $sides; do header="$header,${side}_target"; done
+	for side in $sides; do header="$header,${side}_restarts,${side}_reason"; done
+	echo "$header" >"$out/$name.csv"
 	start_ours
 	begin=$(date +%s)
 	elapsed=0

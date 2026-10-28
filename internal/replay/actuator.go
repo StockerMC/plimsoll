@@ -31,11 +31,13 @@ const (
 	updateLifetime  = 12 * time.Hour
 )
 
-// Updater applies upstream VPA's updater rule: the request changes when it
-// is outside the recommendation's bounds, or when it differs from the target
-// by at least 10% and the last change is at least 12 h old. A recommender
-// whose bounds equal its target would fail the bounds test at every drift,
-// so for it only the second rule applies.
+// Updater is a simplified form of upstream VPA's updater: the request
+// changes when it is outside the recommendation's bounds, or when it differs
+// from the target by at least 10% and the last change is at least 12 h old.
+// Upstream checks pod age rather than time since the last change, and does
+// not exempt bounds equal to the target; here a recommender whose bounds
+// equal its target would fail the bounds test at every drift, so for it only
+// the second rule applies.
 func Updater(request float64, at time.Time) Actuator {
 	return &updater{request: request, changed: at}
 }

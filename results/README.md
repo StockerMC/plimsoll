@@ -10,7 +10,7 @@
 
 Recommenders: `percentile` (the upstream VPA port at upstream's defaults), `percentile-tuned` (the sweep's pick), `window` (the frozen reference), `ml` (arg-min models only, the configuration of the Autopilot paper), `ensemble` (the same selector with the window reference as one more arm), `assigned` (the trace's own `assigned_memory`, the sanity check for the metric), `naive` (the largest peak of the last 48 h plus 15%, the tracking control).
 
-Actuators: `every` sets the limit to the target whenever it changes. `updater` applies upstream VPA's updater rule: change when the request is outside the recommendation's bounds, or differs from the target by 10% or more and the last change is at least 12 h old; the request starts at the trace's `assigned_memory` of the collection's first window. Every recommender but `percentile` reports bounds equal to its target, for which the bounds test would fire at every drift, so for them only the 10%/12 h rule applies.
+Actuators: `every` sets the limit to the target whenever it changes. `updater` is a simplified form of upstream VPA's updater: change when the request is outside the recommendation's bounds, or differs from the target by 10% or more and the last change is at least 12 h old (upstream checks pod age instead); the request starts at the trace's `assigned_memory` of the collection's first window. `window`, `ml`, `ensemble`, `assigned` and `naive` report bounds equal to their target, for which the bounds test would fire at every drift, so for them only the 10%/12 h rule applies.
 
 ## Definitions
 

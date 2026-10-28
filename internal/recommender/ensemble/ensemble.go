@@ -47,14 +47,13 @@ func New(o Options) *ml.Selector {
 		}
 	}
 	if !o.ArgminOnly {
+		// Only Limit() is read, so the arm needs no peak or hourly ring.
 		arms = append(arms, window.New(window.Options{
-			Buckets:     o.Buckets,
-			HalfLife:    windowHalfLife,
-			Stat:        window.Percentile,
-			Percentile:  percentile,
-			PeakWindows: hourWindows,
-			Margin:      margin,
-			MaxWindows:  hourWindows,
+			Buckets:    o.Buckets,
+			HalfLife:   windowHalfLife,
+			Stat:       window.Percentile,
+			Percentile: percentile,
+			Margin:     margin,
 		}))
 	}
 	return ml.New(ml.Options{

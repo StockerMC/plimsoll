@@ -1,0 +1,6 @@
+cella-2026-10-28-ensemble-ratio-every: 203 collections, 6087 days, slack 0.2703 (median 0.2152), exceedance/day 0.1166 (0.0070% of 10147558 instance-windows), changes/day 0.3527, free days 0.933, memory-time 4.74904e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2682 1:0.2682 2:0.2682 12:0.2686], post-update [0:0.3101 1:0.3094 2:0.3096 12:0.3162], agreement 0.051
+cella-2026-10-28-ensemble-ratio-updater: 203 collections, 6087 days, slack 0.2559 (median 0.2021), exceedance/day 0.7817 (0.0469% of 10147558 instance-windows), changes/day 0.2182, free days 0.899, memory-time 4.67855e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2580 1:0.2579 2:0.2579 12:0.2576], post-update [0:0.2970 1:0.2959 2:0.2954 12:0.2912], agreement 0.022
+2 runs over 203 collections in 19.0 s, 190447 windows/s
+bin/replay --split report --params configs/default.json --run-prefix         96.07s user 2.82s system 513% cpu 19.248 total

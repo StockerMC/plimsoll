@@ -1,0 +1,113 @@
+{
+  "run_id": "cella-2026-10-28-ensemble-ratio-every",
+  "commit": "086a09c",
+  "cell": "a",
+  "recommender": "ensemble-ratio",
+  "actuator": "every",
+  "split": "report",
+  "params": {
+    "percentile": {
+      "target_percentile": 0.95,
+      "half_life_hours": 48,
+      "margin": 0.1
+    },
+    "ml": {
+      "decay": 0.2,
+      "overrun": 5,
+      "underrun": 1,
+      "limit_change": 0.1,
+      "model_change": 0.1,
+      "fall_fraction": 0,
+      "fall_windows": 0,
+      "ratio_windows": 0,
+      "ratio_floor": 0
+    },
+    "ensemble-held": {
+      "decay": 0.2,
+      "overrun": 100,
+      "underrun": 1,
+      "limit_change": 0,
+      "model_change": 0.1,
+      "fall_fraction": 0.1,
+      "fall_windows": 288,
+      "ratio_windows": 0,
+      "ratio_floor": 0
+    },
+    "ensemble-ratio": {
+      "decay": 0.2,
+      "overrun": 5,
+      "underrun": 1,
+      "limit_change": 0,
+      "model_change": 0.1,
+      "fall_fraction": 0.1,
+      "fall_windows": 288,
+      "ratio_windows": 288,
+      "ratio_floor": 1.05
+    }
+  },
+  "collections": 203,
+  "groups": 195,
+  "collection_days": 6087,
+  "windows_scored": 1695647,
+  "instance_windows": 10147558,
+  "skipped_rows": 5461,
+  "mean_relative_slack": 0.2703353033377187,
+  "median_relative_slack": 0.21521138794314185,
+  "memory_time": 47490353.43999075,
+  "limit_changes_per_collection_day": 0.3527189091506489,
+  "exceedance_windows_per_collection_day": 0.11664202398554296,
+  "exceedance_free_collection_day_fraction": 0.9334647609659931,
+  "pass_seconds": 19.034952291,
+  "pass_runs": 2,
+  "windows_per_second": 190446.81303005005,
+  "tracking": {
+    "fully_automated": {
+      "collections": 107,
+      "updates": 7802,
+      "mean_abs_rel_error": {
+        "0": 0.2682127098971921,
+        "1": 0.2681936814467066,
+        "12": 0.26859978040960264,
+        "2": 0.26821028601257274
+      },
+      "median_abs_rel_error": {
+        "0": 0.09748283816491447,
+        "1": 0.09752614822142633,
+        "12": 0.09782383560656666,
+        "2": 0.09755854766544786
+      },
+      "post_update_mean_abs_rel_error": {
+        "0": 0.3101002956929642,
+        "1": 0.30939086128218407,
+        "12": 0.31621789556486607,
+        "2": 0.3096466792984203
+      },
+      "post_update_collections": 107,
+      "direction_agreement": 0.05052479231645333
+    },
+    "off": {
+      "collections": 96,
+      "updates": 9,
+      "mean_abs_rel_error": {
+        "0": 0.5241973929407927,
+        "1": 0.5241970820861176,
+        "12": 0.5241936626846911,
+        "2": 0.5241967712314424
+      },
+      "median_abs_rel_error": {
+        "0": 0.5408206279990616,
+        "1": 0.5408206279990616,
+        "12": 0.5408206279990616,
+        "2": 0.5408206279990616
+      },
+      "post_update_mean_abs_rel_error": {
+        "0": 0.08331565343390054,
+        "1": 0.0833081115543006,
+        "12": 0.06901911268314233,
+        "2": 0.08200911165692255
+      },
+      "post_update_collections": 2,
+      "direction_agreement": 0.5
+    }
+  }
+}

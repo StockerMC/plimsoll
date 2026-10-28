@@ -29,6 +29,7 @@ func main() {
 	runPrefix := flag.String("run-prefix", "cella", "run ids are this, the recommender and the actuator")
 	sweep := flag.String("sweep", "", "JSON grid of runs to replay on the tune split, written as one CSV row each")
 	compare := flag.Bool("compare", false, "compare two run directories given as arguments")
+	curves := flag.String("pick-curves", "", "write three report-split memory curves for kind to this directory and exit")
 	flag.Parse()
 
 	if *compare {
@@ -50,6 +51,12 @@ func main() {
 	defer r.Close()
 	if *inspect != 0 {
 		if err := inspectCollection(r, *inspect); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	if *curves != "" {
+		if err := pickCurves(r, *curves); err != nil {
 			log.Fatal(err)
 		}
 		return

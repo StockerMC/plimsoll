@@ -70,15 +70,16 @@ func (a *argmin) Add(counts []float64, at time.Time) {
 	// the limit-change penalty means the same for every job. The sums are
 	// divided by the decayed window count, as Eq. 1 does, so the first
 	// window weighs like any other instead of standing in for the history.
+	// Products are rounded before the sums for the reason in Selector.Add.
 	keep := 1.0
 	if !a.last.IsZero() {
 		keep = math.Min(math.Exp2(-float64(at.Sub(a.last))/float64(a.halfLife)), 1)
 	}
 	a.last = at
 	for k, c := range counts {
-		a.usage[k] = keep*a.usage[k] + c/n
+		a.usage[k] = float64(keep*a.usage[k]) + c/n
 	}
-	a.weight = keep*a.weight + 1
+	a.weight = float64(keep*a.weight) + 1
 	total := 0.0
 	for k := range a.usage {
 		a.below[k] = total / a.weight
@@ -96,7 +97,7 @@ func (a *argmin) Add(counts []float64, at time.Time) {
 			// bucket before it, and the tasks in it overrun that limit.
 			continue
 		}
-		cost := a.weights.Overrun*a.above[k] + a.weights.Underrun*a.below[k]
+		cost := float64(a.weights.Overrun*a.above[k]) + float64(a.weights.Underrun*a.below[k])
 		if top != prev {
 			cost += a.weights.LimitChange
 		}

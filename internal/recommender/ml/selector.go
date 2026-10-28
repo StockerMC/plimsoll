@@ -94,11 +94,14 @@ func (s *Selector) Add(counts []float64, at time.Time) {
 		held := arm.Limit()
 		arm.Add(counts, at)
 		over, under := split(s.tops, counts, held)
-		cost := (w.Overrun*over + w.Underrun*under) / n
+		// Arms tie within an ulp, so the products are rounded before the
+		// sums; the Go spec lets a fused multiply-add skip that rounding
+		// and the tie would then depend on the compiler.
+		cost := (float64(w.Overrun*over) + float64(w.Underrun*under)) / n
 		if arm.Limit() != held {
 			cost += w.LimitChange
 		}
-		s.costs[i] = s.opts.Decay*cost + (1-s.opts.Decay)*s.costs[i]
+		s.costs[i] = float64(s.opts.Decay*cost) + float64((1-s.opts.Decay)*s.costs[i])
 	}
 	// Eq. 9. Its last term is printed with the new limit on both sides;
 	// it is read as a penalty for an arm whose limit differs from the

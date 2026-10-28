@@ -1,4 +1,5 @@
 {
   "percentile": {"target_percentile": 0.95, "half_life_hours": 48, "margin": 0.10},
-  "ml": {"decay": 0.2, "overrun": 5, "underrun": 1, "limit_change": 0.1, "model_change": 0.1}
+  "ml": {"decay": 0.2, "overrun": 5, "underrun": 1, "limit_change": 0.1, "model_change": 0.1},
+  "ensemble-held": {"decay": 0.2, "overrun": 100, "underrun": 1, "limit_change": 0, "model_change": 0.1, "fall_fraction": 0.1, "fall_windows": 288}
 }

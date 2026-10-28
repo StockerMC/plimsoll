@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -34,6 +35,8 @@ type loop struct {
 type container struct {
 	windows *kube.Aggregator
 	model   recommender.Recommender
+	// Set once the checkpoint was loaded or confirmed absent.
+	restored bool
 	// Last checkpoint written, to skip writes when nothing changed.
 	saved []byte
 }
@@ -56,6 +59,13 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	if err != nil {
 		return err
 	}
+	// A failed read is retried next pass before anything is observed, saved
+	// or published, so a transient error cannot overwrite the checkpoint.
+	for _, name := range target.Containers {
+		if err := l.restore(ctx, vpa, name, l.container(vpa, name)); err != nil {
+			return err
+		}
+	}
 	usage, err := kube.ListMemoryUsage(ctx, l.client, vpa.GetNamespace(), target.Selector)
 	if err != nil {
 		return err
@@ -67,7 +77,7 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	ooms := l.detector(vpa).Scan(pods)
 	var rec kube.Recommendation
 	for _, name := range target.Containers {
-		c := l.container(ctx, vpa, name)
+		c := l.container(vpa, name)
 		for _, u := range usage {
 			if u.Container != name {
 				continue
@@ -97,38 +107,45 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	return kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now()))
 }
 
-func (l *loop) container(ctx context.Context, vpa *unstructured.Unstructured, name string) *container {
+func (l *loop) container(vpa *unstructured.Unstructured, name string) *container {
 	key := fmt.Sprintf("%s/%s/%s", vpa.GetNamespace(), vpa.GetName(), name)
 	c, ok := l.containers[key]
 	if !ok {
 		c = &container{windows: kube.NewAggregator(l.window), model: percentile.New(l.opts)}
 		l.containers[key] = c
-		if l.checkpoints {
-			l.restore(ctx, vpa, name, c)
-		}
 	}
 	return c
 }
 
-func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name string, c *container) {
+func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name string, c *container) error {
+	if c.restored {
+		return nil
+	}
 	cp, ok := c.model.(recommender.Checkpointer)
-	if !ok {
-		return
+	if !l.checkpoints || !ok {
+		c.restored = true
+		return nil
 	}
 	saved, found, err := kube.GetCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name)
-	if err != nil {
+	if errors.Is(err, kube.ErrUnusableCheckpoint) {
 		log.Print(err)
-		return
+		c.restored = true
+		return nil
 	}
+	if err != nil {
+		return err
+	}
+	c.restored = true
 	if !found {
-		return
+		return nil
 	}
 	if err := cp.Restore(saved); err != nil {
 		log.Printf("checkpoint %s/%s %s: %v", vpa.GetNamespace(), vpa.GetName(), name, err)
-		return
+		return nil
 	}
 	log.Printf("checkpoint %s/%s %s: restored %d samples from %s", vpa.GetNamespace(), vpa.GetName(), name,
 		saved.Samples, saved.First.Format(time.RFC3339))
+	return nil
 }
 
 func (l *loop) save(ctx context.Context, vpa *unstructured.Unstructured, name string, c *container) {

@@ -2,7 +2,6 @@ package percentile
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/StockerMC/plimsoll/internal/histogram"
 	"github.com/StockerMC/plimsoll/internal/recommender"
@@ -14,18 +13,13 @@ const CheckpointVersion = "plimsoll-v1"
 
 var _ recommender.Checkpointer = (*Recommender)(nil)
 
-// Checkpoint saves the histogram without the peaks of windows that are still
-// open, like upstream's subtractCurrentContainerMemoryPeak: after a restart
-// those tasks open new windows and would otherwise be counted twice.
+// Checkpoint saves the histogram as it is, open windows included. Upstream's
+// subtractCurrentContainerMemoryPeak drops them so a task that opens a new
+// window after the restart is not counted twice, but with a 24 h window that
+// leaves a VPA younger than a day with an empty checkpoint. Here the
+// restarted task's peak can count twice until its old window decays.
 func (r *Recommender) Checkpoint() (recommender.Checkpoint, error) {
-	peaks := histogram.NewDecayingHistogram(r.opts.Buckets, r.opts.HalfLife)
-	peaks.Merge(r.peaks)
-	for _, s := range r.instances {
-		if r.last.Before(s.windowEnd) {
-			peaks.SubtractSample(math.Max(s.peak, s.oomPeak), 1.0, s.windowEnd)
-		}
-	}
-	h, err := peaks.SaveToCheckpoint()
+	h, err := r.peaks.SaveToCheckpoint()
 	if err != nil {
 		return recommender.Checkpoint{}, err
 	}

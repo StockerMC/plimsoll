@@ -16,9 +16,8 @@ func daily(r *Recommender, days int) {
 	}
 }
 
-// The last of eight daily peaks is in a window that is still open, so a
-// restored recommender holds only the first seven: its target matches a
-// recommender that saw seven days, not eight (p90 lands on 7e8, not 8e8).
+// The last of eight daily peaks is in a window that is still open and has the
+// largest weight; the restored target has to keep it (p90 lands on 8e8, not 7e8).
 func TestCheckpointRoundTrip(t *testing.T) {
 	opts := Options{Buckets: memoryOptions, SamplesPerDay: 288}
 	saved := New(opts)
@@ -31,12 +30,7 @@ func TestCheckpointRoundTrip(t *testing.T) {
 	if err := restored.Restore(c); err != nil {
 		t.Fatal(err)
 	}
-	seven := New(opts)
-	daily(seven, 7)
-	inEpsilon(t, restored.Recommend().Target, seven.Recommend().Target, 1e-9)
-	if restored.Recommend().Target == saved.Recommend().Target {
-		t.Error("restored target includes the open window's peak")
-	}
+	inEpsilon(t, restored.Recommend().Target, saved.Recommend().Target, 1e-9)
 }
 
 func TestRestoreRefusesOtherVersion(t *testing.T) {

@@ -1,0 +1,358 @@
+[
+  {
+    "name": "ml-d0.05-o5-l0-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o5-l0-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o5-l0.1-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o5-l0.1-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o20-l0-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o20-l0-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o20-l0.1-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.05-o20-l0.1-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.05,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o5-l0-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o5-l0-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o5-l0.1-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o5-l0.1-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o20-l0-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o20-l0-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o20-l0.1-m0",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0
+      }
+    }
+  },
+  {
+    "name": "ml-d0.2-o20-l0.1-m0.1",
+    "recommender": "ml",
+    "params": {
+      "ml": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0.1,
+        "model_change": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.9-h24-m0.1",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.9,
+        "half_life_hours": 24,
+        "margin": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.9-h24-m0.15",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.9,
+        "half_life_hours": 24,
+        "margin": 0.15
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.9-h48-m0.1",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.9,
+        "half_life_hours": 48,
+        "margin": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.9-h48-m0.15",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.9,
+        "half_life_hours": 48,
+        "margin": 0.15
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.95-h24-m0.1",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.95,
+        "half_life_hours": 24,
+        "margin": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.95-h24-m0.15",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.95,
+        "half_life_hours": 24,
+        "margin": 0.15
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.95-h48-m0.1",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.95,
+        "half_life_hours": 48,
+        "margin": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.95-h48-m0.15",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.95,
+        "half_life_hours": 48,
+        "margin": 0.15
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.98-h24-m0.1",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.98,
+        "half_life_hours": 24,
+        "margin": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.98-h24-m0.15",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.98,
+        "half_life_hours": 24,
+        "margin": 0.15
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.98-h48-m0.1",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.98,
+        "half_life_hours": 48,
+        "margin": 0.1
+      }
+    }
+  },
+  {
+    "name": "percentile-p0.98-h48-m0.15",
+    "recommender": "percentile-tuned",
+    "params": {
+      "percentile": {
+        "target_percentile": 0.98,
+        "half_life_hours": 48,
+        "margin": 0.15
+      }
+    }
+  },
+  {
+    "name": "window",
+    "recommender": "window"
+  },
+  {
+    "name": "ensemble",
+    "recommender": "ensemble"
+  },
+  {
+    "name": "assigned",
+    "recommender": "assigned"
+  },
+  {
+    "name": "naive",
+    "recommender": "naive"
+  }
+]

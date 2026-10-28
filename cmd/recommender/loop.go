@@ -38,7 +38,7 @@ type loop struct {
 
 // vpaState is the state kept for one VPA between passes.
 type vpaState struct {
-	// targetRef the models were built for.
+	// workload the models were built for.
 	target     string
 	containers map[string]*container
 	oom        *kube.OOMDetector
@@ -141,12 +141,18 @@ func (l *loop) names() []string {
 	return []string{l.name, l.ensembleName}
 }
 
+// workload names what a VPA's models describe: the VPA object and its
+// targetRef.
+func workload(vpa *unstructured.Unstructured) string {
+	kind, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "kind")
+	name, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "name")
+	return string(vpa.GetUID()) + "/" + kind + "/" + name
+}
+
 // state returns the state for one VPA, starting over when its targetRef has
 // changed since the models were built.
 func (l *loop) state(vpa *unstructured.Unstructured) *vpaState {
-	kind, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "kind")
-	name, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "name")
-	target := kind + "/" + name
+	target := workload(vpa)
 	st, ok := l.vpas[vpa.GetUID()]
 	if !ok || st.target != target {
 		st = &vpaState{target: target, containers: make(map[string]*container), oom: kube.NewOOMDetector()}
@@ -183,7 +189,7 @@ func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name
 		c.restored = true
 		return nil
 	}
-	saved, found, err := kube.GetCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name)
+	saved, found, err := kube.GetCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name, workload(vpa))
 	if errors.Is(err, kube.ErrUnusableCheckpoint) {
 		log.Print(err)
 		c.restored = true
@@ -219,7 +225,7 @@ func (l *loop) save(ctx context.Context, vpa *unstructured.Unstructured, name st
 	if err != nil || bytes.Equal(raw, c.saved) {
 		return
 	}
-	if err := kube.PutCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name, state, time.Now()); err != nil {
+	if err := kube.PutCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name, workload(vpa), state, time.Now()); err != nil {
 		log.Print(err)
 		return
 	}

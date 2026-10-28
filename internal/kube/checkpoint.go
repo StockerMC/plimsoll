@@ -37,8 +37,14 @@ type histogramCheckpoint struct {
 }
 
 // ErrUnusableCheckpoint means a checkpoint exists but cannot be restored: it
-// belongs to another VPA or container, or its status does not decode.
+// belongs to another VPA or container, was written for another workload, or
+// its status does not decode.
 var ErrUnusableCheckpoint = errors.New("unusable checkpoint")
+
+// workloadAnnotation holds the VPA UID and targetRef a checkpoint was written
+// for, so a VPA recreated under the same name, or pointed at another
+// workload, does not restore the old workload's history.
+const workloadAnnotation = "plimsoll/workload"
 
 // checkpointName is upstream's naming, <vpa>-<container>. foo/bar-baz and
 // foo-bar/baz share a name, so reads and writes check the spec.
@@ -55,9 +61,9 @@ func checkOwner(obj *unstructured.Unstructured, vpa, container string) error {
 	return nil
 }
 
-// GetCheckpoint reads the checkpoint of one container of a VPA. It returns
-// false when there is none.
-func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa, container string) (recommender.Checkpoint, bool, error) {
+// GetCheckpoint reads the checkpoint of one container of a VPA written for
+// workload. It returns false when there is none.
+func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa, container, workload string) (recommender.Checkpoint, bool, error) {
 	name := checkpointName(vpa, container)
 	obj, err := client.Resource(checkpointResource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -68,6 +74,9 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	}
 	if err := checkOwner(obj, vpa, container); err != nil {
 		return recommender.Checkpoint{}, false, err
+	}
+	if w := obj.GetAnnotations()[workloadAnnotation]; w != workload {
+		return recommender.Checkpoint{}, false, fmt.Errorf("%w: %s/%s was written for workload %q, not %q", ErrUnusableCheckpoint, namespace, name, w, workload)
 	}
 	raw, err := json.Marshal(obj.Object["status"])
 	if err != nil {
@@ -90,10 +99,10 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	}, true, nil
 }
 
-// PutCheckpoint creates or replaces the checkpoint of one container of a VPA.
-// The CRD has no status subresource, so the whole object is updated. It
-// refuses to overwrite a checkpoint of another VPA or container.
-func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa, container string, c recommender.Checkpoint, now time.Time) error {
+// PutCheckpoint creates or replaces the checkpoint of one container of a VPA
+// for workload. The CRD has no status subresource, so the whole object is
+// updated. It refuses to overwrite a checkpoint of another VPA or container.
+func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa, container, workload string, c recommender.Checkpoint, now time.Time) error {
 	status, err := toMap(checkpointStatus{
 		LastUpdateTime: metav1.NewTime(now),
 		Version:        c.Version,
@@ -110,9 +119,9 @@ func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 		return fmt.Errorf("marshal checkpoint: %w", err)
 	}
 	name := checkpointName(vpa, container)
-	err = putCheckpoint(ctx, client, namespace, name, vpa, container, status)
+	err = putCheckpoint(ctx, client, namespace, name, vpa, container, workload, status)
 	if apierrors.IsConflict(err) {
-		err = putCheckpoint(ctx, client, namespace, name, vpa, container, status)
+		err = putCheckpoint(ctx, client, namespace, name, vpa, container, workload, status)
 	}
 	if err != nil {
 		return fmt.Errorf("put checkpoint %s/%s: %w", namespace, name, err)
@@ -120,14 +129,14 @@ func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	return nil
 }
 
-func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, name, vpa, container string, status map[string]any) error {
+func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, name, vpa, container, workload string, status map[string]any) error {
 	res := client.Resource(checkpointResource).Namespace(namespace)
 	obj, err := res.Get(ctx, name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		obj = &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "autoscaling.k8s.io/v1",
 			"kind":       "VerticalPodAutoscalerCheckpoint",
-			"metadata":   map[string]any{"name": name, "namespace": namespace},
+			"metadata":   map[string]any{"name": name, "namespace": namespace, "annotations": map[string]any{workloadAnnotation: workload}},
 			"spec":       map[string]any{"vpaObjectName": vpa, "containerName": container},
 			"status":     status,
 		}}
@@ -140,6 +149,12 @@ func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, nam
 	if err := checkOwner(obj, vpa, container); err != nil {
 		return err
 	}
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[workloadAnnotation] = workload
+	obj.SetAnnotations(annotations)
 	obj.Object["status"] = status
 	_, err = res.Update(ctx, obj, metav1.UpdateOptions{})
 	return err

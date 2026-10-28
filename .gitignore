@@ -17,3 +17,7 @@ service-account*.json
 
 # Python venv for tools/bq
 .venv/
+
+# Trace extract
+data/*
+!data/README.md

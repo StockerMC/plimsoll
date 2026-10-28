@@ -43,6 +43,24 @@ func TestLimitIsSetBeforeTheWindowIsObserved(t *testing.T) {
 	}
 }
 
+// A collection that starts five minutes before a day boundary reaches the end
+// of its cold start one window before the next boundary; that lone window
+// must not be scored as a collection-day of its own.
+func TestScoringStartsAtAWholeDay(t *testing.T) {
+	c := collection(1200)
+	for i := range c.Windows {
+		c.Windows[i].Start = c.Windows[i].Start.Add(24*time.Hour - trace.WindowLength)
+		c.Windows[i].End = c.Windows[i].End.Add(24*time.Hour - trace.WindowLength)
+	}
+	s := Run(c, func() recommender.Recommender { return new(counter) }, Every)
+	if s.From != 577 {
+		t.Fatalf("scoring starts at window %d, want 577 (the first window of trace day 3)", s.From)
+	}
+	if got := s.Points[s.From].Day; got != 3 || s.Points[s.From-1].Day != 2 {
+		t.Errorf("first scored window on day %d after day %d, want 3 after 2", got, s.Points[s.From-1].Day)
+	}
+}
+
 // Replaying the request updates must not change the collection, or the
 // second run over it starts from the last request instead of the first.
 func TestRunLeavesTheCollectionUnchanged(t *testing.T) {

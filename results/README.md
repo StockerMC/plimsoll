@@ -32,7 +32,7 @@ Against `ensemble-held`, the recommender it is built on, it has higher mean slac
 
 ## Definitions
 
-Windows are the trace's five-minute windows; one peak per instance per window from `maximum_usage.memory`, rows with it missing or zero dropped (`skipped_rows`). The limit scored for a window is the one in force before the window was observed. The first 48 h of every collection are not scored, for every recommender alike. Memory is a fraction of the largest machine, never bytes.
+Windows are the trace's five-minute windows; one peak per instance per window from `maximum_usage.memory`, rows with it missing or zero dropped (`skipped_rows`). The limit scored for a window is the one in force before the window was observed. The first 48 h of every collection and the rest of the trace day they end in are not scored, for every recommender alike, so every scored collection-day is a whole trace day. Memory is a fraction of the largest machine, never bytes.
 
 - Relative slack per collection-day: (mean limit over the day's windows minus the nearest-rank p95 of the instance-windows' average usage) divided by the mean limit. `mean_relative_slack` is the mean over collections of each collection's mean over its days.
 - Limit-exceedance windows (simulated OOM proxy): instance-windows whose peak is above the limit, per collection-day. Never an OOM: the replay is open loop. For `assigned` under `every` each row is checked against its own `assigned_memory` before rows merge into instance-windows; its limit for slack is the window's duration-weighted mean, rows without `assigned_memory` left out.

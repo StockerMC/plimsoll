@@ -8,7 +8,8 @@ import (
 	"github.com/StockerMC/plimsoll/internal/trace"
 )
 
-// ColdStart is left unscored at the start of every collection.
+// ColdStart is left unscored at the start of every collection, and so is the
+// rest of the trace day it ends in, so every scored day is a whole day.
 const ColdStart = 48 * time.Hour
 
 // NewActuator builds the actuation rule for one collection from the request
@@ -30,11 +31,8 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 	act := newAct(steps[0].Assigned, steps[0].Time)
 	req := requests{current: make(map[int]float64), changes: c.Requests, updates: c.Updates}
 	_, own := act.(every)
-	s.From = len(steps)
-	for i, step := range steps {
-		if s.From == len(steps) && step.Time.Sub(steps[0].Time) >= ColdStart {
-			s.From = i
-		}
+	s.From = scoredFrom(steps)
+	for _, step := range steps {
 		r := recommender.Recommendation{Target: step.Assigned, Lower: step.Assigned, Upper: step.Assigned}
 		if rec != nil {
 			r = rec.Recommend()
@@ -56,6 +54,28 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 		}
 	}
 	return s
+}
+
+// scoredFrom is the first window of the first trace day that starts after the
+// cold start.
+func scoredFrom(steps []trace.Step) int {
+	warm := -1
+	for i, step := range steps {
+		if step.Time.Sub(steps[0].Time) < ColdStart {
+			continue
+		}
+		if warm < 0 {
+			warm = step.Day
+			if trace.Day(step.Time.Add(-trace.WindowLength)) < step.Day {
+				return i
+			}
+			continue
+		}
+		if step.Day > warm {
+			return i
+		}
+	}
+	return len(steps)
 }
 
 // requests replays the trace's request changes as a step function.

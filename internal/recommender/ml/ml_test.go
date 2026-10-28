@@ -35,8 +35,8 @@ func randomCounts(r *rand.Rand, n int) []float64 {
 
 // One exponential average per (model, limit), Eq. 4 to 6 as printed, with
 // the first window taken whole like the arm does. The candidate limits are
-// the bucket edges, so the buckets past a candidate's overrun it and the
-// buckets before it are under it.
+// the distinct bucket edges, so the buckets past a candidate's overrun it
+// and the buckets before it are under it.
 func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 	buckets := unitBuckets(t, 30)
 	tops := recommender.BucketTops(buckets)
@@ -72,6 +72,10 @@ func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 		best := math.Inf(1)
 		next := 0.0
 		for k, limit := range tops {
+			if k > 0 && limit == tops[k-1] {
+				// The last bucket starts at the top of the one before.
+				continue
+			}
 			cost := weights.Overrun*over[k] + weights.Underrun*under[k]
 			if limit != raw {
 				cost += weights.LimitChange

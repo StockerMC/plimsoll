@@ -88,6 +88,11 @@ func (a *argmin) Add(counts []float64, at time.Time) {
 	prev := a.raw
 	best := math.Inf(1)
 	for k, top := range a.tops {
+		if k > 0 && top == a.tops[k-1] {
+			// The last bucket's top is its start, the same limit as the
+			// bucket before it, and the tasks in it overrun that limit.
+			continue
+		}
 		cost := a.weights.Overrun*a.above[k] + a.weights.Underrun*a.below[k]
 		if top != prev {
 			cost += a.weights.LimitChange

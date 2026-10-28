@@ -26,7 +26,7 @@ func readSeries(r io.Reader) (sides []string, series []sample, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(rows) == 0 {
+	if len(rows) == 0 || len(rows[0]) < 2 {
 		return nil, nil, fmt.Errorf("no header")
 	}
 	for _, col := range rows[0][2:] {

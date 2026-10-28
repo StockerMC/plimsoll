@@ -33,8 +33,10 @@ var (
 const (
 	windowHalfLife = 48 * time.Hour
 	percentile     = 0.98
-	hourWindows    = 12
-	costDecay      = 0.2
+	// An hour at the paper's 5-minute window; a shorter --memory-window
+	// shortens the cold start and the max with it.
+	hourWindows = 12
+	costDecay   = 0.2
 )
 
 // New returns the configured selector.

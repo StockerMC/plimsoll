@@ -30,6 +30,11 @@ type Options struct {
 	// follows every fall at once.
 	FallFraction float64
 	FallWindows  int
+	// With RatioWindows set, one arg-min arm per half-life whose margin is
+	// the largest peak-to-raw ratio of its last RatioWindows windows, at
+	// least RatioFloor, instead of the grid of fixed margins.
+	RatioWindows int
+	RatioFloor   float64
 }
 
 var (
@@ -60,6 +65,10 @@ func New(o Options) *ml.Selector {
 	margin := window.StepMargin(o.LargeLimit)
 	var arms []ml.Arm
 	for _, hl := range halfLives {
+		if o.RatioWindows > 0 {
+			arms = append(arms, ml.NewRatio(o.Buckets, ml.NewArgmin(o.Buckets, hl, 0, weights), o.RatioWindows, o.RatioFloor))
+			continue
+		}
 		for _, m := range margins {
 			arms = append(arms, ml.NewArgmin(o.Buckets, hl, m, weights))
 		}

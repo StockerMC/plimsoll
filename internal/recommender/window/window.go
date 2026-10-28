@@ -51,6 +51,7 @@ type Recommender struct {
 	mean  float64   // decayed sum of per-window mean usage
 	peaks []float64 // last PeakWindows window peaks
 	last  time.Time
+	raw   float64   // latest statistic
 	limit float64   // latest margin-inclusive statistic
 	ring  []float64 // last MaxWindows limits
 }
@@ -103,15 +104,15 @@ func (r *Recommender) Add(counts []float64, at time.Time) {
 	r.mean = a*r.mean + load/n
 	r.peaks = push(r.peaks, peak, r.opts.PeakWindows)
 
-	raw := r.raw()
-	r.limit = raw
+	r.raw = r.stat()
+	r.limit = r.raw
 	if r.opts.Margin != nil {
-		r.limit = raw * (1 + r.opts.Margin(raw))
+		r.limit = r.raw * (1 + r.opts.Margin(r.raw))
 	}
 	r.ring = push(r.ring, r.limit, r.opts.MaxWindows)
 }
 
-func (r *Recommender) raw() float64 {
+func (r *Recommender) stat() float64 {
 	switch r.opts.Stat {
 	case Max:
 		return maxOf(r.peaks)
@@ -151,6 +152,11 @@ func (r *Recommender) percentile(p float64) float64 {
 // last hour.
 func (r *Recommender) Limit() float64 {
 	return r.limit
+}
+
+// Raw is the latest statistic before its margin.
+func (r *Recommender) Raw() float64 {
+	return r.raw
 }
 
 // Recommend returns the max of the last MaxWindows limits, floored at

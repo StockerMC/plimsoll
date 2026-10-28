@@ -15,6 +15,8 @@ type Arm interface {
 	Add(counts []float64, at time.Time)
 	// Limit is the model's current margin-inclusive limit.
 	Limit() float64
+	// Raw is the limit before the margin.
+	Raw() float64
 }
 
 // Weights are the cost weights shared by every model and the selector:
@@ -113,6 +115,10 @@ func (a *argmin) Add(counts []float64, at time.Time) {
 
 func (a *argmin) Limit() float64 {
 	return a.limit
+}
+
+func (a *argmin) Raw() float64 {
+	return a.raw
 }
 
 func sum(xs []float64) float64 {

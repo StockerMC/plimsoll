@@ -3,6 +3,7 @@ package ml
 import (
 	"math"
 	"math/rand/v2"
+	"slices"
 	"testing"
 	"time"
 
@@ -100,6 +101,7 @@ type fixed float64
 
 func (fixed) Add([]float64, time.Time) {}
 func (f fixed) Limit() float64         { return float64(f) }
+func (f fixed) Raw() float64           { return float64(f) }
 
 // Arm 0 holds 5, arm 1 holds 10. For twenty windows one task sits at 8: arm
 // 1 under-provisions (cost 1), arm 0 overruns (cost 5). Then four tasks sit
@@ -200,6 +202,47 @@ func (s *script) Add([]float64, time.Time) {
 }
 
 func (s *script) Limit() float64 { return s.limits[s.i] }
+func (s *script) Raw() float64   { return s.limits[s.i] }
+
+// The inner arm's raw limit is 4 before the first window and 8 after it.
+// One task at 7.5 (bucket top 8) records ratio 2 against the 4 held before
+// the window, not 1 against the 8 fitted on it, and the limit is 8 x 2. The
+// next window's task at 3.5 records 0.5 against the 8 and leaves the first
+// ratio as it was.
+func TestRatioDividesPeakByRawHeldBeforeWindow(t *testing.T) {
+	buckets := unitBuckets(t, 20)
+	r := NewRatio(buckets, &script{limits: []float64{4, 8, 8}}, 10, 1).(*ratio)
+	for i, tt := range []struct {
+		peak  float64
+		ring  []float64
+		limit float64
+	}{{7.5, []float64{2}, 16}, {3.5, []float64{2, 0.5}, 16}} {
+		r.Add(recommender.Sample{Peaks: []recommender.InstancePeak{{Instance: "a", Peak: tt.peak}}}.Counts(buckets), t0.Add(time.Duration(i)*step))
+		if !slices.Equal(r.ring, tt.ring) || r.Limit() != tt.limit {
+			t.Errorf("window %d: ring %v limit %v, want %v %v", i, r.ring, r.Limit(), tt.ring, tt.limit)
+		}
+	}
+}
+
+// Over a constant raw limit of 10 and random peaks, the wrapped limit is 10
+// times the largest of the last five ratios, or 10 times the floor 1.2 when
+// every one of them is below it.
+func TestRatioLimitIsRawTimesLargestRecentRatio(t *testing.T) {
+	buckets := unitBuckets(t, 30)
+	const windows = 5
+	r := NewRatio(buckets, fixed(10), windows, 1.2)
+	rng := rand.New(rand.NewPCG(3, 4))
+	var ratios []float64
+	for i := 0; i < 200; i++ {
+		top := float64(1 + rng.IntN(20))
+		r.Add(recommender.Sample{Peaks: []recommender.InstancePeak{{Instance: "a", Peak: top - 0.5}}}.Counts(buckets), t0.Add(time.Duration(i)*step))
+		ratios = append(ratios, top/10)
+		want := 10 * math.Max(1.2, slices.Max(ratios[max(0, len(ratios)-windows):]))
+		if got := r.Limit(); math.Abs(got-want) > 1e-9 {
+			t.Fatalf("window %d: limit %v, want %v", i, got, want)
+		}
+	}
+}
 
 // An OOM at request 8 with the instance's last peak at 10 bumps to 12 at
 // once and the ring holds it; the next window carries the bump as a peak,

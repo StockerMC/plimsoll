@@ -12,7 +12,7 @@ spec:
     - name: plimsoll           # or plimsoll-ensemble
 ```
 
-The binary reads memory usage from metrics-server, watches containers for `OOMKilled` restarts, and writes `status.recommendation` through the status subresource. Upstream's recommender ignores VPAs that name another recommender, and this one ignores VPAs that do not name it.
+The binary reads memory usage from metrics-server, watches containers for `OOMKilled` restarts, and writes `status.recommendation` through the status subresource, capped by the VPA's memory `minAllowed` and `maxAllowed` and left out for containers in mode `Off` or without memory in `controlledResources`. Upstream's recommender ignores VPAs that name another recommender, and this one ignores VPAs that do not name it.
 
 `plimsoll-ensemble` reimplements the paper's ML recommender: arg-min models, each a decayed histogram read at the limit that minimizes a weighted overrun and underrun cost, and a selector that picks the model whose recent limits would have cost least, with the paper's moving-window statistic added as one more model it can pick. It departs from the paper's equations 4 to 8 in three ways: each model is scored on the limit it held before a window rather than the limit fitted on it, costs are divided by the window's task count, and margins are a fraction of the limit rather than added to it. [Escra](https://hunhoffe.github.io/assets/pdf/escra.pdf) (section VI-A) recreated the same recommender as a baseline; this one is in Go and shares one interface between the live binary and the replay.
 

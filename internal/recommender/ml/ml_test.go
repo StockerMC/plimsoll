@@ -250,3 +250,18 @@ func TestSelectorScoresLimitHeldBeforeWindow(t *testing.T) {
 		t.Errorf("cost %v, want 5 for the limit held before the window", s.costs[0])
 	}
 }
+
+// For ColdWindows windows the recommendation is the largest peak seen, its
+// bucket top 8 with a 25% margin, then the selector's choice.
+func TestColdStartUsesLargestPeakWithMargin(t *testing.T) {
+	s := New(Options{Buckets: unitBuckets(t, 20), Arms: []Arm{fixed(3)}, Decay: 0.2, MaxWindows: 1, ColdWindows: 3,
+		Margin: func(float64) float64 { return 0.25 }})
+	at := t0
+	for i, want := range []float64{10, 10, 10, 3} {
+		s.Observe(recommender.Sample{Time: at, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 7.5}}})
+		at = at.Add(step)
+		if got := s.Recommend().Target; got != want {
+			t.Errorf("window %d: Recommend = %v, want %v", i+1, got, want)
+		}
+	}
+}

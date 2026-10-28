@@ -100,16 +100,18 @@ type fixed float64
 func (fixed) Add([]float64, time.Time) {}
 func (f fixed) Limit() float64         { return float64(f) }
 
-// Arm 0 holds 10, arm 1 holds 5. For twenty windows one task sits at 8: arm
-// 0 under-provisions (cost 1), arm 1 overruns (cost 5). Then four tasks sit
-// at 3 and one at 5: arm 0 still costs 1, arm 1 costs 0.8. The smoothed
-// costs cross once; the model-change penalty delays the switch.
+// Arm 0 holds 5, arm 1 holds 10. For twenty windows one task sits at 8: arm
+// 1 under-provisions (cost 1), arm 0 overruns (cost 5). Then four tasks sit
+// at 3 and one at 5: arm 1 still costs 1, arm 0 costs 0.8. The smoothed
+// costs cross once; the model-change penalty delays the switch. The
+// incumbent is the second arm so the penalty must be charged against the
+// previous choice, not the running best.
 func TestSelectorSwitchesOnceAndLater(t *testing.T) {
 	buckets := unitBuckets(t, 20)
 	run := func(modelChange float64) (switches, first int) {
 		s := New(Options{
 			Buckets: buckets,
-			Arms:    []Arm{fixed(10), fixed(5)},
+			Arms:    []Arm{fixed(5), fixed(10)},
 			Weights: Weights{Overrun: 5, Underrun: 1, ModelChange: modelChange},
 			Decay:   0.2,
 		})

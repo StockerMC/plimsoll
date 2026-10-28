@@ -90,10 +90,11 @@ func (s *Selector) Add(counts []float64, at time.Time) {
 	// Eq. 9. Its last term is printed with the new limit on both sides;
 	// it is read as a penalty for an arm whose limit differs from the
 	// limit now in force.
+	prev := s.chosen
 	best := math.Inf(1)
 	for i, arm := range s.opts.Arms {
 		cost := s.costs[i]
-		if i != s.chosen {
+		if i != prev {
 			cost += w.ModelChange
 		}
 		if arm.Limit() != s.limit {

@@ -16,12 +16,13 @@ sweep)
 	;;
 report)
 	bin/replay --split report --params configs/default.json --run-prefix "$prefix" \
-		--recommender percentile,percentile-tuned,window,ml,ensemble,assigned,naive \
+		--recommender percentile,percentile-tuned,window,ml,ensemble,ensemble-held,assigned,naive \
 		--actuator every,updater --raw "results/raw/$prefix" | tee "results/summary/$prefix-report.log"
 	;;
 compare)
 	for act in every updater; do
-		for pair in ensemble:percentile-tuned ensemble:percentile ensemble:ml ensemble:window ml:percentile-tuned window:percentile-tuned; do
+		for pair in ensemble:percentile-tuned ensemble:percentile ensemble:ml ensemble:window ml:percentile-tuned window:percentile-tuned \
+			ensemble-held:percentile-tuned ensemble-held:window ensemble-held:ensemble ensemble-held:ml; do
 			bin/replay --compare "results/summary/$prefix-${pair%%:*}-$act" "results/summary/$prefix-${pair##*:}-$act"
 		done
 	done

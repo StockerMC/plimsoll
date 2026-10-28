@@ -15,20 +15,26 @@ import (
 )
 
 // Params are the tunable parameters of the percentile baseline and of the
-// model selector's globals. Zero values mean the defaults.
+// model selector's globals, the latter once for ml and ensemble and once
+// for ensemble-held. Zero values mean the defaults.
 type Params struct {
 	Percentile struct {
 		TargetPercentile float64 `json:"target_percentile"`
 		HalfLifeHours    float64 `json:"half_life_hours"`
 		Margin           float64 `json:"margin"`
 	} `json:"percentile"`
-	ML struct {
-		Decay       float64 `json:"decay"`
-		Overrun     float64 `json:"overrun"`
-		Underrun    float64 `json:"underrun"`
-		LimitChange float64 `json:"limit_change"`
-		ModelChange float64 `json:"model_change"`
-	} `json:"ml"`
+	ML   selectorParams `json:"ml"`
+	Held selectorParams `json:"ensemble-held"`
+}
+
+type selectorParams struct {
+	Decay        float64 `json:"decay"`
+	Overrun      float64 `json:"overrun"`
+	Underrun     float64 `json:"underrun"`
+	LimitChange  float64 `json:"limit_change"`
+	ModelChange  float64 `json:"model_change"`
+	FallFraction float64 `json:"fall_fraction"`
+	FallWindows  int     `json:"fall_windows"`
 }
 
 // Trace memory is a fraction of the largest machine: the first
@@ -47,7 +53,7 @@ const (
 	hourWindows   = 12
 )
 
-var recommenders = []string{"percentile", "percentile-tuned", "window", "ml", "ensemble", "assigned", "naive"}
+var recommenders = []string{"percentile", "percentile-tuned", "window", "ml", "ensemble", "ensemble-held", "assigned", "naive"}
 
 // newRecommender returns the constructor for name; nil for the trace's own
 // assigned memory.
@@ -80,20 +86,31 @@ func newRecommender(name string, p Params) (func() recommender.Recommender, erro
 			})
 		}, nil
 	case "ml", "ensemble":
-		opts := ensemble.Options{
-			Buckets:    buckets,
-			LargeLimit: largeLimit,
-			ArgminOnly: name == "ml",
-			Weights:    ml.Weights{Overrun: p.ML.Overrun, Underrun: p.ML.Underrun, LimitChange: p.ML.LimitChange, ModelChange: p.ML.ModelChange},
-			Decay:      p.ML.Decay,
+		if p.ML.FallFraction != 0 || p.ML.FallWindows != 0 {
+			return nil, fmt.Errorf("%s has no fall hysteresis; use ensemble-held", name)
 		}
-		return func() recommender.Recommender { return ensemble.New(opts) }, nil
+		return newEnsemble(name == "ml", p.ML), nil
+	case "ensemble-held":
+		return newEnsemble(false, p.Held), nil
 	case "assigned":
 		return nil, nil
 	case "naive":
 		return replay.NewNaive, nil
 	}
 	return nil, fmt.Errorf("unknown recommender %q", name)
+}
+
+func newEnsemble(argminOnly bool, p selectorParams) func() recommender.Recommender {
+	opts := ensemble.Options{
+		Buckets:      buckets,
+		LargeLimit:   largeLimit,
+		ArgminOnly:   argminOnly,
+		Weights:      ml.Weights{Overrun: p.Overrun, Underrun: p.Underrun, LimitChange: p.LimitChange, ModelChange: p.ModelChange},
+		Decay:        p.Decay,
+		FallFraction: p.FallFraction,
+		FallWindows:  p.FallWindows,
+	}
+	return func() recommender.Recommender { return ensemble.New(opts) }
 }
 
 func newActuator(name string) (replay.NewActuator, error) {

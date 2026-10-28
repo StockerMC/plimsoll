@@ -23,7 +23,7 @@ Needs Go, Docker, kind and kubectl.
 ```
 make kind-up      # kind cluster, metrics-server, upstream VPA 1.8.1
 make demo         # memory-load pod with VPAs for ours and upstream's; DEMO=oom or DEMO=ensemble
-make scenarios    # side-by-side scenario suite, about 32 min
+make scenarios    # side-by-side scenario suite
 make replay STEP=report   # Borg replay; needs the extract in data/ (data/README.md)
 make test
 ```

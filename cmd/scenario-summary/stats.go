@@ -50,3 +50,27 @@ func settle(series []sample, side int, tol float64) int {
 	}
 	return at - from
 }
+
+// exceedance scores a trace run's samples that have both a target and a
+// usage reading.
+type exceedance struct {
+	scored, over int
+	slack        float64 // mean (target - usage) / target; NaN when none scored
+}
+
+func scoreUsage(series []sample, side int) exceedance {
+	var e exceedance
+	for _, s := range series {
+		target, usage := s.target[side], s.usage[side]
+		if target == 0 || usage == 0 {
+			continue
+		}
+		e.scored++
+		if usage > target {
+			e.over++
+		}
+		e.slack += (target - usage) / target
+	}
+	e.slack /= float64(e.scored)
+	return e
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"strings"
 	"testing"
 )
@@ -86,5 +87,33 @@ func TestSummarize(t *testing.T) {
 	upstream := summarize(series, 2, 0.10)
 	if upstream.final != 0 || upstream.settle != -1 || upstream.oomKills != 1 {
 		t.Errorf("upstream = %+v", upstream)
+	}
+}
+
+func TestScoreUsage(t *testing.T) {
+	csv := `elapsed_s,event,ours_target,upstream_target,ours_restarts,ours_reason,upstream_restarts,upstream_reason,curve_mib,ours_usage,upstream_usage
+0,,,,0,,0,,180.5,300Mi,300Mi
+15,,400Mi,300Mi,0,,0,,290.0,300Mi,
+30,,500Mi,250Mi,0,,0,,600.0,600Mi,250Mi`
+	_, series, err := readSeries(strings.NewReader(csv))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name         string
+		side         int
+		scored, over int
+		slack        float64
+	}{
+		{"skips a sample without a target", 0, 2, 1, (0.25 - 0.2) / 2},
+		{"skips a sample with a target but no usage and counts equal as not over", 1, 1, 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := scoreUsage(series, tt.side)
+			if e.scored != tt.scored || e.over != tt.over || math.Abs(e.slack-tt.slack) > 1e-12 {
+				t.Errorf("got %+v, want scored %d, over %d, slack %g", e, tt.scored, tt.over, tt.slack)
+			}
+		})
 	}
 }

@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -18,15 +20,31 @@ const tolerance = 0.10
 type result struct {
 	scenario, side string
 	stats
+	exceedance
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		log.Fatal("usage: scenario-summary DIR")
+	trace := flag.Bool("trace", false, "summarize every CSV in DIR as a trace-to-kind run")
+	flag.Parse()
+	if flag.NArg() != 1 {
+		log.Fatal("usage: scenario-summary [--trace] DIR")
 	}
-	dir := os.Args[1]
+	dir := flag.Arg(0)
+	names := scenarios
+	if *trace {
+		paths, err := filepath.Glob(filepath.Join(dir, "*.csv"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		names = nil
+		for _, p := range paths {
+			if name := strings.TrimSuffix(filepath.Base(p), ".csv"); name != "summary" {
+				names = append(names, name)
+			}
+		}
+	}
 	var results []result
-	for _, name := range scenarios {
+	for _, name := range names {
 		f, err := os.Open(filepath.Join(dir, name+".csv"))
 		if os.IsNotExist(err) {
 			continue
@@ -40,60 +58,85 @@ func main() {
 			log.Fatalf("%s: %v", name, err)
 		}
 		for i, side := range sides {
-			results = append(results, result{name, side, summarize(series, i, tolerance)})
+			r := result{scenario: name, side: side, stats: summarize(series, i, tolerance)}
+			if *trace {
+				if len(series) == 0 || series[0].usage == nil {
+					log.Fatalf("%s: no usage columns", name)
+				}
+				r.exceedance = scoreUsage(series, i)
+			}
+			results = append(results, r)
 		}
 	}
-	if err := writeFile(filepath.Join(dir, "summary.csv"), results, writeCSV); err != nil {
+	format := scenarioFormat
+	if *trace {
+		format = traceFormat
+	}
+	if err := writeFile(filepath.Join(dir, "summary.csv"), results, format, writeCSV); err != nil {
 		log.Fatal(err)
 	}
-	if err := writeFile(filepath.Join(dir, "summary.md"), results, writeMarkdown); err != nil {
+	if err := writeFile(filepath.Join(dir, "summary.md"), results, format, writeMarkdown); err != nil {
 		log.Fatal(err)
 	}
-	writeMarkdown(os.Stdout, results)
+	writeMarkdown(os.Stdout, results, format)
 }
 
-func writeFile(path string, results []result, write func(io.Writer, []result) error) error {
-	f, err := os.Create(path)
+type format struct {
+	note    string
+	header  []string
+	columns func(result) []string
+}
+
+var scenarioFormat = format{
+	note:   fmt.Sprintf("settle_s: seconds from the last event, or the start, until the target stays within %.0f%% of its final value.", tolerance*100),
+	header: []string{"scenario", "recommender", "final_target_mib", "min_target_mib", "max_target_mib", "oom_kills", "settle_s"},
+	columns: func(r result) []string {
+		return []string{r.scenario, r.side, mib(r.final), mib(r.min), mib(r.max), strconv.Itoa(r.oomKills), settleText(r)}
+	},
+}
+
+var traceFormat = format{
+	note:   fmt.Sprintf("One row per curve and recommender, VPAs in Off mode. scored: 15 s samples with both a target and a `kubectl top` usage; exceedance: scored samples with usage above the target; slack: mean (target - usage) / target over the scored samples. `kubectl top` carries no timestamp and lags the curve by 15 to 60 s, so a target can already include the usage it is scored against: this is a concurrent comparison, not a test of prediction ahead of time. The pods have no memory limit, so oom_kills only shows the curve ran uninterrupted. settle_s: seconds from the start until the target stays within %.0f%% of its final value.", tolerance*100),
+	header: []string{"curve", "recommender", "scored", "exceedance", "mean_slack", "oom_kills", "settle_s"},
+	columns: func(r result) []string {
+		return []string{r.scenario, r.side, strconv.Itoa(r.scored), strconv.Itoa(r.over), strconv.FormatFloat(r.slack, 'f', 4, 64), strconv.Itoa(r.oomKills), settleText(r)}
+	},
+}
+
+func settleText(r result) string {
+	if r.settle < 0 {
+		return ""
+	}
+	return strconv.Itoa(r.settle)
+}
+
+func writeFile(path string, results []result, f format, write func(io.Writer, []result, format) error) error {
+	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	if err := write(f, results); err != nil {
-		f.Close()
+	if err := write(file, results, f); err != nil {
+		file.Close()
 		return fmt.Errorf("write %s: %w", path, err)
 	}
-	return f.Close()
+	return file.Close()
 }
 
-func columns(r result) []string {
-	settle := ""
-	if r.settle >= 0 {
-		settle = strconv.Itoa(r.settle)
-	}
-	return []string{r.scenario, r.side, mib(r.final), mib(r.min), mib(r.max), strconv.Itoa(r.oomKills), settle}
-}
-
-var header = []string{"scenario", "recommender", "final_target_mib", "min_target_mib", "max_target_mib", "oom_kills", "settle_s"}
-
-func writeCSV(w io.Writer, results []result) error {
+func writeCSV(w io.Writer, results []result, f format) error {
 	cw := csv.NewWriter(w)
-	cw.Write(header)
+	cw.Write(f.header)
 	for _, r := range results {
-		cw.Write(columns(r))
+		cw.Write(f.columns(r))
 	}
 	cw.Flush()
 	return cw.Error()
 }
 
-func writeMarkdown(w io.Writer, results []result) error {
+func writeMarkdown(w io.Writer, results []result, f format) error {
 	row := func(cells []string) string { return "| " + strings.Join(cells, " | ") + " |\n" }
-	rule := make([]string, len(header))
-	for i := range rule {
-		rule[i] = "---"
-	}
-	text := fmt.Sprintf("settle_s: seconds from the last event, or the start, until the target stays within %.0f%% of its final value.\n\n", tolerance*100)
-	text += row(header) + row(rule)
+	text := f.note + "\n\n" + row(f.header) + row(slices.Repeat([]string{"---"}, len(f.header)))
 	for _, r := range results {
-		text += row(columns(r))
+		text += row(f.columns(r))
 	}
 	_, err := io.WriteString(w, text)
 	return err

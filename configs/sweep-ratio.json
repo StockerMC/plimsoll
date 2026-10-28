@@ -1,0 +1,390 @@
+[
+  {
+    "name": "ratio-o5-w288-f1.0",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 288,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w288-f1.0-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 288,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w288-f1.05",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 288,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w288-f1.05-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 288,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w576-f1.0",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 576,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w576-f1.0-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 576,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w576-f1.05",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 576,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w576-f1.05-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 576,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w2016-f1.0",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w2016-f1.0-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w2016-f1.05",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o5-w2016-f1.05-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 5,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w288-f1.0",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 288,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w288-f1.0-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 288,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w288-f1.05",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 288,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w288-f1.05-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 288,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w576-f1.0",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 576,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w576-f1.0-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 576,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w576-f1.05",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 576,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w576-f1.05-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 576,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w2016-f1.0",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w2016-f1.0-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.0
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w2016-f1.05",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "ratio-o50-w2016-f1.05-held",
+    "recommender": "ensemble-ratio",
+    "params": {
+      "ensemble-ratio": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288,
+        "ratio_windows": 2016,
+        "ratio_floor": 1.05
+      }
+    }
+  },
+  {
+    "name": "window",
+    "recommender": "window"
+  }
+]

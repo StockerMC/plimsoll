@@ -47,6 +47,12 @@ type Histogram interface {
 
 	// String returns a human-readable description of the histogram.
 	String() string
+
+	// SaveToCheckpoint returns a compact form of the histogram.
+	SaveToCheckpoint() (*Checkpoint, error)
+
+	// LoadFromCheckpoint adds the samples of a checkpoint to the histogram.
+	LoadFromCheckpoint(*Checkpoint) error
 }
 
 // NewHistogram returns a new Histogram using the given options.

@@ -10,3 +10,5 @@ settle_s: seconds from the last event, or the start, until the target stays with
 | burst | upstream | 600 | 309 | 600 | 1 | 420 |
 | restart | ours | 454 | 250 | 454 | 0 | 0 |
 | restart | upstream | 454 | 392 | 454 | 0 | 0 |
+
+Every ensemble row is its cold-start rule (largest peak seen, with margin): at 1-minute windows no scenario outlasts the 12-window cold start, so the selector never set a target here.

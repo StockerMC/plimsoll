@@ -16,8 +16,9 @@ var _ recommender.Checkpointer = (*Recommender)(nil)
 // Checkpoint saves the histogram as it is, open windows included. Upstream's
 // subtractCurrentContainerMemoryPeak drops them so a task that opens a new
 // window after the restart is not counted twice, but with a 24 h window that
-// leaves a VPA younger than a day with an empty checkpoint. Here the
-// restarted task's peak can count twice until its old window decays.
+// leaves a VPA younger than a day with an empty checkpoint. Here every
+// restart adds the current window's peak again, since Restore opens fresh
+// windows, so a crash-looping recommender over-weights today's peak.
 func (r *Recommender) Checkpoint() (recommender.Checkpoint, error) {
 	h, err := r.peaks.SaveToCheckpoint()
 	if err != nil {

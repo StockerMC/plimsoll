@@ -29,6 +29,8 @@ func main() {
 	fallWindows := flag.Int("ensemble-fall-windows", 0, "memory windows in a row the fall must last; 0 follows every fall at once")
 	overrunWeight := flag.Float64("ensemble-overrun-weight", ensemble.DefaultWeights.Overrun, "selector cost weight on usage above the limit")
 	limitChangeWeight := flag.Float64("ensemble-limit-change-weight", ensemble.DefaultWeights.LimitChange, "selector cost weight on a change of limit")
+	ratioWindows := flag.Int("ensemble-ratio-windows", 0, "memory windows over which each arg-min arm learns its margin from its peak-to-limit ratios; 0 keeps the fixed margins")
+	ratioFloor := flag.Float64("ensemble-ratio-floor", 1, "floor on the learned margin, as a factor on the raw limit")
 	checkpoints := flag.Bool("checkpoints", true, "restore from and save to VerticalPodAutoscalerCheckpoint objects")
 	once := flag.Bool("once", false, "run one pass and exit")
 	flag.Parse()
@@ -68,6 +70,8 @@ func main() {
 			},
 			FallFraction: *fallFraction,
 			FallWindows:  *fallWindows,
+			RatioWindows: *ratioWindows,
+			RatioFloor:   *ratioFloor,
 		},
 		checkpoints: *checkpoints,
 		containers:  make(map[string]*container),

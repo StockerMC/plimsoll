@@ -51,12 +51,11 @@ func (l *loop) runOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var errs []error
 	for i := range vpas {
-		if err := l.update(ctx, &vpas[i]); err != nil {
-			log.Print(err)
-		}
+		errs = append(errs, l.update(ctx, &vpas[i]))
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error {

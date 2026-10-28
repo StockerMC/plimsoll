@@ -85,10 +85,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	for {
-		if err := l.runOnce(ctx); err != nil {
+		err := l.runOnce(ctx)
+		if err != nil {
 			log.Print(err)
 		}
 		if *once {
+			if err != nil {
+				stop()
+				os.Exit(1)
+			}
 			return
 		}
 		select {

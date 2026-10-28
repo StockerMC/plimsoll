@@ -22,6 +22,7 @@ func main() {
 	aggregation := flag.Duration("memory-aggregation-interval", 24*time.Hour, "window over which each pod keeps one peak in the histogram")
 	halfLife := flag.Duration("memory-histogram-decay-half-life", 24*time.Hour, "half-life of the histogram's decay")
 	minMemoryMB := flag.Float64("pod-recommendation-min-memory-mb", 250, "floor on every memory recommendation")
+	checkpoints := flag.Bool("checkpoints", true, "restore from and save to VerticalPodAutoscalerCheckpoint objects")
 	once := flag.Bool("once", false, "run one pass and exit")
 	flag.Parse()
 
@@ -46,8 +47,9 @@ func main() {
 			AggregationInterval: *aggregation,
 			HalfLife:            *halfLife,
 		},
-		containers: make(map[string]*container),
-		oom:        make(map[string]*kube.OOMDetector),
+		checkpoints: *checkpoints,
+		containers:  make(map[string]*container),
+		oom:         make(map[string]*kube.OOMDetector),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

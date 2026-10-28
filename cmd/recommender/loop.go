@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -18,19 +20,22 @@ import (
 )
 
 type loop struct {
-	client     dynamic.Interface
-	name       string
-	namespace  string
-	window     time.Duration
-	opts       percentile.Options
-	containers map[string]*container
-	oom        map[string]*kube.OOMDetector
+	client      dynamic.Interface
+	name        string
+	namespace   string
+	window      time.Duration
+	opts        percentile.Options
+	checkpoints bool
+	containers  map[string]*container
+	oom         map[string]*kube.OOMDetector
 }
 
 // container is the state kept for one container of one VPA between passes.
 type container struct {
 	windows *kube.Aggregator
 	model   recommender.Recommender
+	// Last checkpoint written, to skip writes when nothing changed.
+	saved []byte
 }
 
 func (l *loop) runOnce(ctx context.Context) error {
@@ -62,7 +67,7 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	ooms := l.detector(vpa).Scan(pods)
 	var rec kube.Recommendation
 	for _, name := range target.Containers {
-		c := l.container(vpa, name)
+		c := l.container(ctx, vpa, name)
 		for _, u := range usage {
 			if u.Container != name {
 				continue
@@ -85,18 +90,66 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 		})
 		log.Printf("%s/%s %s: target %s lower %s upper %s", vpa.GetNamespace(), vpa.GetName(), name,
 			quantity(r.Target), quantity(r.Lower), quantity(r.Upper))
+		if l.checkpoints {
+			l.save(ctx, vpa, name, c)
+		}
 	}
 	return kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now()))
 }
 
-func (l *loop) container(vpa *unstructured.Unstructured, name string) *container {
+func (l *loop) container(ctx context.Context, vpa *unstructured.Unstructured, name string) *container {
 	key := fmt.Sprintf("%s/%s/%s", vpa.GetNamespace(), vpa.GetName(), name)
 	c, ok := l.containers[key]
 	if !ok {
 		c = &container{windows: kube.NewAggregator(l.window), model: percentile.New(l.opts)}
 		l.containers[key] = c
+		if l.checkpoints {
+			l.restore(ctx, vpa, name, c)
+		}
 	}
 	return c
+}
+
+func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name string, c *container) {
+	cp, ok := c.model.(recommender.Checkpointer)
+	if !ok {
+		return
+	}
+	saved, found, err := kube.GetCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	if !found {
+		return
+	}
+	if err := cp.Restore(saved); err != nil {
+		log.Printf("checkpoint %s/%s %s: %v", vpa.GetNamespace(), vpa.GetName(), name, err)
+		return
+	}
+	log.Printf("checkpoint %s/%s %s: restored %d samples from %s", vpa.GetNamespace(), vpa.GetName(), name,
+		saved.Samples, saved.First.Format(time.RFC3339))
+}
+
+func (l *loop) save(ctx context.Context, vpa *unstructured.Unstructured, name string, c *container) {
+	cp, ok := c.model.(recommender.Checkpointer)
+	if !ok {
+		return
+	}
+	state, err := cp.Checkpoint()
+	if err != nil {
+		log.Printf("checkpoint %s/%s %s: %v", vpa.GetNamespace(), vpa.GetName(), name, err)
+		return
+	}
+	raw, err := json.Marshal(state)
+	if err != nil || bytes.Equal(raw, c.saved) {
+		return
+	}
+	if err := kube.PutCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name, state, time.Now()); err != nil {
+		log.Print(err)
+		return
+	}
+	c.saved = raw
 }
 
 func (l *loop) recordOOM(c *container, o kube.OOM) {

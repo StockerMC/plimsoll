@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Usage: replay-all.sh sweep|report|compare
 # sweep tunes on the tune split and writes results/summary/sweep-cella.csv;
 # the chosen rows are copied into configs/default.json by hand and committed
 # before report runs on the report split.
-set -eu
+set -euo pipefail
 cd "$(dirname "$0")/.."
 
 date=$(date +%F)

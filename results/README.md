@@ -16,7 +16,7 @@ Actuators: `every` sets the limit to the target whenever it changes. `updater` i
 
 The report split is held out from tuning; the hypothesis was formed after the first report run, so it is not held out from hypothesis formation. Its grid and the frozen `ensemble-held` block were committed before the report split was replayed.
 
-Budget for every comparison of `ensemble-held`: the report-split `window` row of the same actuator times 1.10. Under `every` that is 1.1656 exceedance windows and 0.4473 limit changes per collection-day; the candidate has 0.1452 and 0.3591, inside both. Under `updater` it is 2.5390 and 0.0880; the candidate has 2.4120, inside, and 0.2594 changes, outside, so no updater comparison of `ensemble-held` is within budget.
+Budget for every comparison of `ensemble-held`: the report-split `window` row of the same actuator times 1.10. Under `every` that is 1.2052 exceedance windows and 0.4625 limit changes per collection-day; the candidate has 0.1502 and 0.3713, inside both. Under `updater` it is 2.6251 and 0.0908; the candidate has 2.4940, inside, and 0.2680 changes, outside, so no updater comparison of `ensemble-held` is within budget.
 
 `cmd/recommender` runs the same selector configuration with `--ensemble-fall-fraction 0.1 --ensemble-fall-windows 288 --ensemble-overrun-weight 100 --ensemble-limit-change-weight 0` at the default 5-minute `--memory-window`.
 
@@ -24,9 +24,9 @@ Budget for every comparison of `ensemble-held`: the report-split `window` row of
 
 Same disclosure as `ensemble-held`: the report split is held out from tuning, not from hypothesis formation; the grid and the frozen `ensemble-ratio` block were committed before the report split was replayed. The grid's hysteresis values are `ensemble-held`'s chosen ones, not re-swept.
 
-Budget, the report-split `window` row of the same actuator times 1.10. Under `every` (1.1656 exceedance windows and 0.4473 limit changes per collection-day) the candidate has 0.1166 and 0.3527, inside both. Under `updater` (2.5390 and 0.0880) it has 0.7817, inside, and 0.2182 changes, outside, so no updater comparison of `ensemble-ratio` is within budget.
+Budget, the report-split `window` row of the same actuator times 1.10. Under `every` (1.2052 exceedance windows and 0.4625 limit changes per collection-day) the candidate has 0.1206 and 0.3647, inside both. Under `updater` (2.6251 and 0.0908) it has 0.8081, inside, and 0.2256 changes, outside, so no updater comparison of `ensemble-ratio` is within budget.
 
-Against `ensemble-held`, the recommender it is built on, it has higher mean slack under `every` (+0.0123, bootstrap 95% CI [+0.0037, +0.0209]) at 0.80x the exceedance windows and 0.98x the limit changes; under `updater` the slack difference is +0.0039 [-0.0051, +0.0126] at 0.32x the exceedance windows. The learned margin trades slack for fewer exceedance windows; it does not lower slack.
+Against `ensemble-held`, the recommender it is built on, it has higher mean slack under `every` (+0.0124, bootstrap 95% CI [+0.0037, +0.0210]) at 0.80x the exceedance windows and 0.98x the limit changes; under `updater` the slack difference is +0.0037 [-0.0053, +0.0124] at 0.32x the exceedance windows. The learned margin trades slack for fewer exceedance windows; it does not lower slack.
 
 `cmd/recommender` runs the same selector configuration with `--ensemble-ratio-windows 288 --ensemble-ratio-floor 1.05 --ensemble-fall-fraction 0.1 --ensemble-fall-windows 288 --ensemble-overrun-weight 5 --ensemble-limit-change-weight 0` at the default 5-minute `--memory-window`.
 

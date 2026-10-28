@@ -47,25 +47,25 @@ Three identical Deployments per scenario, VPAs in `Off` mode naming `plimsoll`, 
 
 ## Replay on the Borg 2019 trace
 
-`cmd/replay` drives every recommender through the live binary's interface over five-minute memory peaks from cell a of the Borg 2019 trace: 399 long-running prod-tier collections of 2 to 50 tasks, split by a hash of user and logical name into 196 for tuning and 203 for reporting. The limit scored for a window is the one set before that window was observed. Each recommender runs under two actuation rules: `every` applies each new target, `updater` is a simplified form of upstream's updater (10% and 12 h). Report split, 6,087 collection-days; definitions and every run in `results/README.md`.
+`cmd/replay` drives every recommender through the live binary's interface over five-minute memory peaks from cell a of the Borg 2019 trace: 399 long-running prod-tier collections of 2 to 50 tasks, split by a hash of user and logical name into 196 for tuning and 203 for reporting. The limit scored for a window is the one set before that window was observed. Each recommender runs under two actuation rules: `every` applies each new target, `updater` is a simplified form of upstream's updater (10% and 12 h). Report split, 5,887 collection-days, each a whole trace day after a 48 h cold start; definitions and every run in `results/README.md`.
 
 | recommender | slack, every | exceedance/day, every | changes/day, every | slack, updater | exceedance/day, updater | changes/day, updater |
 | --- | --- | --- | --- | --- | --- | --- |
-| percentile, upstream defaults | 0.275 | 1.58 | 0.78 | 0.273 | 1.91 | 0.27 |
-| percentile, tuned | 0.284 | 0.31 | 0.37 | 0.277 | 1.06 | 0.17 |
-| moving window (paper) | 0.245 | 1.06 | 0.41 | 0.248 | 2.31 | 0.08 |
-| ML selector, arg-min models only | 0.140 | 8.51 | 1.35 | 0.152 | 32.80 | 0.40 |
-| ensemble | 0.140 | 8.43 | 1.37 | 0.152 | 32.71 | 0.40 |
-| ensemble-held | 0.258 | 0.15 | 0.36 | 0.252 | 2.41 | 0.26 |
-| ensemble-ratio | 0.270 | 0.12 | 0.35 | 0.256 | 0.78 | 0.22 |
-| 48 h max + 15% | 0.272 | 0.07 | 1.71 | 0.266 | 0.75 | 0.21 |
-| trace's own limit | 0.439 | 1.84 | 1.98 | 0.437 | 3.70 | 0.08 |
+| percentile, upstream defaults | 0.274 | 1.63 | 0.81 | 0.272 | 1.97 | 0.28 |
+| percentile, tuned | 0.284 | 0.32 | 0.38 | 0.277 | 1.10 | 0.18 |
+| moving window (paper) | 0.246 | 1.10 | 0.42 | 0.249 | 2.39 | 0.08 |
+| ML selector, arg-min models only | 0.140 | 8.80 | 1.40 | 0.151 | 33.91 | 0.41 |
+| ensemble | 0.140 | 8.71 | 1.42 | 0.152 | 33.82 | 0.42 |
+| ensemble-held | 0.257 | 0.15 | 0.37 | 0.251 | 2.49 | 0.27 |
+| ensemble-ratio | 0.270 | 0.12 | 0.36 | 0.255 | 0.81 | 0.23 |
+| 48 h max + 15% | 0.270 | 0.08 | 1.77 | 0.265 | 0.77 | 0.22 |
+| trace's own limit | 0.438 | 1.90 | 2.05 | 0.437 | 3.83 | 0.09 |
 
 Slack is mean relative slack over collections, exceedance is limit-exceedance windows (simulated OOM proxy) per collection-day, changes are limit changes per collection-day.
 
-Under `every` the ensemble's mean relative slack is 14.4 points below the tuned percentile baseline (paired difference -0.144, bootstrap 95% CI over collection groups [-0.157, -0.131]) at 27x its exceedance windows, and it has lower slack at no more exceedance on 1% of collections.
+Under `every` the ensemble's mean relative slack is 14.4 points below the tuned percentile baseline (paired difference -0.144, bootstrap 95% CI over collection groups [-0.158, -0.130]) at 27x its exceedance windows, and it has lower slack at no more exceedance on 1% of collections.
 
-Beyond the paper, `ensemble-held` lets the recommendation fall only after the selector's hourly max has stayed 10% lower for a day. Against the ensemble, the pre-registered comparison, it loses: 11.8 points more slack ([+0.106, +0.129]) for 0.017x its exceedance windows. Against the tuned baseline under `every` it cut mean relative slack by 2.6 points (0.258 vs 0.284, [-0.036, -0.016]) at 0.46x its exceedance windows, 0.98x its limit changes and 10.9% more memory-time, with lower slack at no more exceedance on 7% of collections. `ensemble-ratio` adds a margin per arm learned from that arm's peak-to-limit ratios and trades 1.2 points more slack ([+0.004, +0.021]) for 0.80x the held ensemble's exceedance windows; it also loses to the ensemble on slack (+0.130, [+0.121, +0.139]). Both were tuned on the tuning half only, but the ideas came after the first report run. Under `updater` neither stays within the moving window's limit-change budget.
+Beyond the paper, `ensemble-held` lets the recommendation fall only after the selector's hourly max has stayed 10% lower for a day. Against the ensemble, the pre-registered comparison, it loses: 11.7 points more slack ([+0.106, +0.129]) for 0.017x its exceedance windows. Against the tuned baseline under `every` it cut mean relative slack by 2.7 points (0.257 vs 0.284, [-0.037, -0.016]) at 0.46x its exceedance windows, 0.98x its limit changes and 10.9% more memory-time, with lower slack at no more exceedance on 7% of collections. `ensemble-ratio` adds a margin per arm learned from that arm's peak-to-limit ratios and trades 1.2 points more slack ([+0.004, +0.021]) for 0.80x the held ensemble's exceedance windows; it also loses to the ensemble on slack (+0.130, [+0.120, +0.139]). Both were tuned on the tuning half only, but the ideas came after the first report run. Under `updater` neither stays within the moving window's limit-change budget.
 
 On the 107 collections the trace marks `VERTICAL_SCALING_FULLY_AUTOMATED`, no recommender tracked the recorded request updates more closely than the 48 h running max (under `every`, mean absolute relative error against the request one window later over the 12 windows after each update, averaged over collections: 0.189, against 0.191 for the upstream-default percentile and 0.245 for the ensemble). On the 96 collections with vertical scaling off, the same error against their fixed request over all windows is 0.51 to 0.56 for every recommender.
 

@@ -166,38 +166,6 @@ func newSelector(buckets histogram.HistogramOptions, arms []Arm) *Selector {
 	return New(Options{Buckets: buckets, Arms: arms, Weights: weights, Decay: 0.2, MaxWindows: 12, ColdWindows: 12})
 }
 
-// Two selectors see the same windows until window 30 and different ones
-// after. The recommendation read before each window is the same on both
-// sides through window 30, so no window influences the limit scored
-// against it.
-func TestRecommendationPrecedesWindow(t *testing.T) {
-	buckets := unitBuckets(t, 20)
-	a := newSelector(buckets, argminGrid(buckets))
-	b := newSelector(buckets, argminGrid(buckets))
-	diverged := false
-	at := t0
-	for i := 0; i < 60; i++ {
-		before := a.Recommend()
-		if b.Recommend() != before {
-			t.Fatalf("window %d: recommendations differ before the window is seen", i)
-		}
-		usageB := 7.5
-		if i >= 30 {
-			usageB = 15.5
-		}
-		a.Observe(recommender.Sample{Time: at, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 7.5}}})
-		b.Observe(recommender.Sample{Time: at, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: usageB}}})
-		at = at.Add(step)
-		if i >= 30 && a.Recommend() != b.Recommend() {
-			diverged = true
-			break
-		}
-	}
-	if !diverged {
-		t.Error("the two series never diverged, so the test checked nothing")
-	}
-}
-
 func BenchmarkSelector(b *testing.B) {
 	buckets, err := histogram.NewExponentialHistogramOptions(1, math.Exp2(-17), 1.05, 1e-15)
 	if err != nil {
@@ -268,5 +236,17 @@ func TestRecommendationHoldsHigherLimitForMaxWindows(t *testing.T) {
 		if got := s.Recommend().Target; got != want {
 			t.Errorf("window %d: Recommend = %v, want %v", i, got, want)
 		}
+	}
+}
+
+// The arm holds 5 before the window and 10 after it. One task at 7.5 overruns
+// 5 (cost 5) and is under 10 (cost 1); the cost charged must be the first,
+// or the arm is scored on a fit to the window it is scored against.
+func TestSelectorScoresLimitHeldBeforeWindow(t *testing.T) {
+	s := New(Options{Buckets: unitBuckets(t, 20), Arms: []Arm{&script{limits: []float64{5, 10}}},
+		Weights: Weights{Overrun: 5, Underrun: 1}, Decay: 1})
+	s.Observe(recommender.Sample{Time: t0, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 7.5}}})
+	if s.costs[0] != 5 {
+		t.Errorf("cost %v, want 5 for the limit held before the window", s.costs[0])
 	}
 }

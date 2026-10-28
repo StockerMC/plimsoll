@@ -1,4 +1,4 @@
-.PHONY: test vet kind-up kind-down smoke demo scenarios
+.PHONY: test vet kind-up kind-down smoke demo scenarios replay
 
 test: vet
 	go test ./...
@@ -20,3 +20,6 @@ demo:
 
 scenarios:
 	scripts/scenarios.sh $(SCENARIOS)
+
+replay:
+	scripts/replay-all.sh $(STEP)

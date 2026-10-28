@@ -36,6 +36,8 @@ type loop struct {
 
 // container is the state kept for one container of one VPA between passes.
 type container struct {
+	// Recommender name the VPA selected when the model was built.
+	name    string
 	windows *kube.Aggregator
 	model   recommender.Recommender
 	// Set once the checkpoint was loaded or confirmed absent.
@@ -117,18 +119,21 @@ func (l *loop) names() []string {
 	return []string{l.name, l.ensembleName}
 }
 
+// container returns the state for one container, starting over when the
+// VPA has switched between our recommender names since it was built.
 func (l *loop) container(vpa *unstructured.Unstructured, name string) *container {
 	key := fmt.Sprintf("%s/%s/%s", vpa.GetNamespace(), vpa.GetName(), name)
+	selected, _ := kube.SelectedRecommender(vpa, l.names()...)
 	c, ok := l.containers[key]
-	if !ok {
-		c = &container{windows: kube.NewAggregator(l.window), model: l.model(vpa)}
+	if !ok || c.name != selected {
+		c = &container{name: selected, windows: kube.NewAggregator(l.window), model: l.model(selected)}
 		l.containers[key] = c
 	}
 	return c
 }
 
-func (l *loop) model(vpa *unstructured.Unstructured) recommender.Recommender {
-	if selected, _ := kube.SelectedRecommender(vpa, l.names()...); selected == l.ensembleName {
+func (l *loop) model(selected string) recommender.Recommender {
+	if selected == l.ensembleName {
 		return ensemble.New(l.ensembleOpts)
 	}
 	return percentile.New(l.opts)

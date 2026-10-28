@@ -206,7 +206,6 @@ func BenchmarkSelector(b *testing.B) {
 			samples[i].Peaks = append(samples[i].Peaks, recommender.InstancePeak{Instance: string(rune('a' + j)), Peak: 0.1 + 0.05*r.Float64()})
 		}
 	}
-	b.ReportMetric(float64(buckets.NumBuckets()), "buckets")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		s := newSelector(buckets, append(argminGrid(buckets), fixed(0.2)))

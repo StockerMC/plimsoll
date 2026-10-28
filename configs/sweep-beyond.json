@@ -1,0 +1,276 @@
+[
+  {
+    "name": "held-o20-f0.05-k48",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 48
+      }
+    }
+  },
+  {
+    "name": "held-o20-f0.05-k144",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 144
+      }
+    }
+  },
+  {
+    "name": "held-o20-f0.05-k288",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 288
+      }
+    }
+  },
+  {
+    "name": "held-o20-f0.1-k48",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 48
+      }
+    }
+  },
+  {
+    "name": "held-o20-f0.1-k144",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 144
+      }
+    }
+  },
+  {
+    "name": "held-o20-f0.1-k288",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 20,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288
+      }
+    }
+  },
+  {
+    "name": "held-o50-f0.05-k48",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 48
+      }
+    }
+  },
+  {
+    "name": "held-o50-f0.05-k144",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 144
+      }
+    }
+  },
+  {
+    "name": "held-o50-f0.05-k288",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 288
+      }
+    }
+  },
+  {
+    "name": "held-o50-f0.1-k48",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 48
+      }
+    }
+  },
+  {
+    "name": "held-o50-f0.1-k144",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 144
+      }
+    }
+  },
+  {
+    "name": "held-o50-f0.1-k288",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 50,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288
+      }
+    }
+  },
+  {
+    "name": "held-o100-f0.05-k48",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 100,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 48
+      }
+    }
+  },
+  {
+    "name": "held-o100-f0.05-k144",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 100,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 144
+      }
+    }
+  },
+  {
+    "name": "held-o100-f0.05-k288",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 100,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.05,
+        "fall_windows": 288
+      }
+    }
+  },
+  {
+    "name": "held-o100-f0.1-k48",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 100,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 48
+      }
+    }
+  },
+  {
+    "name": "held-o100-f0.1-k144",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 100,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 144
+      }
+    }
+  },
+  {
+    "name": "held-o100-f0.1-k288",
+    "recommender": "ensemble-held",
+    "params": {
+      "ensemble-held": {
+        "decay": 0.2,
+        "overrun": 100,
+        "underrun": 1,
+        "limit_change": 0,
+        "model_change": 0.1,
+        "fall_fraction": 0.1,
+        "fall_windows": 288
+      }
+    }
+  },
+  {
+    "name": "window",
+    "recommender": "window"
+  }
+]

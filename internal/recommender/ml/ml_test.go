@@ -33,10 +33,10 @@ func randomCounts(r *rand.Rand, n int) []float64 {
 	return counts
 }
 
-// One exponential average per (model, limit), Eq. 4 to 6 as printed, with
-// the first window taken whole like the arm does. The candidate limits are
-// the distinct bucket edges, so the buckets past a candidate's overrun it
-// and the buckets before it are under it.
+// One exponential average per (model, limit), Eq. 4 to 6 as printed from
+// zero, divided by the weight the windows so far carry, 1 - (1-d)^t. The
+// candidate limits are the distinct bucket edges, so the buckets past a
+// candidate's overrun it and the buckets before it are under it.
 func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 	buckets := unitBuckets(t, 30)
 	tops := recommender.BucketTops(buckets)
@@ -53,10 +53,7 @@ func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 		for _, c := range counts {
 			n += c
 		}
-		dt := d
-		if i == 0 {
-			dt = 1
-		}
+		seen := 1 - math.Pow(1-d, float64(i+1))
 		for k := range tops {
 			o, u := 0.0, 0.0
 			for j := range tops {
@@ -66,8 +63,8 @@ func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 					u += counts[j] / n
 				}
 			}
-			over[k] = (1-dt)*over[k] + dt*o
-			under[k] = (1-dt)*under[k] + dt*u
+			over[k] = (1-d)*over[k] + d*o
+			under[k] = (1-d)*under[k] + d*u
 		}
 		best := math.Inf(1)
 		next := 0.0
@@ -76,7 +73,7 @@ func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 				// The last bucket starts at the top of the one before.
 				continue
 			}
-			cost := weights.Overrun*over[k] + weights.Underrun*under[k]
+			cost := (weights.Overrun*over[k] + weights.Underrun*under[k]) / seen
 			if limit != raw {
 				cost += weights.LimitChange
 			}
@@ -88,8 +85,8 @@ func TestArgminMatchesOneAveragePerLimit(t *testing.T) {
 
 		arm.Add(counts, t0.Add(time.Duration(i)*step))
 		for k := range tops {
-			if math.Abs(arm.above[k]-over[k]) > 1e-9 || math.Abs(arm.below[k]-under[k]) > 1e-9 {
-				t.Fatalf("window %d bucket %d: above %v below %v, want %v %v", i, k, arm.above[k], arm.below[k], over[k], under[k])
+			if math.Abs(arm.above[k]-over[k]/seen) > 1e-9 || math.Abs(arm.below[k]-under[k]/seen) > 1e-9 {
+				t.Fatalf("window %d bucket %d: above %v below %v, want %v %v", i, k, arm.above[k], arm.below[k], over[k]/seen, under[k]/seen)
 			}
 		}
 		if arm.raw != raw {

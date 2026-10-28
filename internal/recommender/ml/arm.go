@@ -34,9 +34,10 @@ type argmin struct {
 	halfLife time.Duration
 	margin   float64
 	weights  Weights
-	usage    []float64 // decayed task fraction per bucket
-	above    []float64 // above[k]: decayed fraction of tasks over the edge of bucket k
-	below    []float64 // below[k]: decayed fraction of tasks under it
+	usage    []float64 // decayed task fraction per bucket, summed over windows
+	weight   float64   // decayed window count, the sum of usage
+	above    []float64 // above[k]: fraction of tasks over the edge of bucket k
+	below    []float64 // below[k]: fraction of tasks under it
 	last     time.Time
 	raw      float64
 	limit    float64
@@ -66,23 +67,25 @@ func (a *argmin) Add(counts []float64, at time.Time) {
 	// below each candidate limit. Both are linear in the window histogram,
 	// so one decayed histogram serves every candidate through prefix sums.
 	// Counts are divided by the task count so the costs are fractions and
-	// the limit-change penalty means the same for every job.
-	d := 1.0
+	// the limit-change penalty means the same for every job. The sums are
+	// divided by the decayed window count, as Eq. 1 does, so the first
+	// window weighs like any other instead of standing in for the history.
+	keep := 1.0
 	if !a.last.IsZero() {
-		d = 1 - math.Exp2(-float64(at.Sub(a.last))/float64(a.halfLife))
-		d = math.Min(math.Max(d, 0), 1)
+		keep = math.Min(math.Exp2(-float64(at.Sub(a.last))/float64(a.halfLife)), 1)
 	}
 	a.last = at
 	for k, c := range counts {
-		a.usage[k] = (1-d)*a.usage[k] + d*c/n
+		a.usage[k] = keep*a.usage[k] + c/n
 	}
+	a.weight = keep*a.weight + 1
 	total := 0.0
 	for k := range a.usage {
-		a.below[k] = total
+		a.below[k] = total / a.weight
 		total += a.usage[k]
 	}
 	for k := range a.usage {
-		a.above[k] = total - a.below[k] - a.usage[k]
+		a.above[k] = (total-a.usage[k])/a.weight - a.below[k]
 	}
 	// Eq. 6, ties to the lowest limit.
 	prev := a.raw

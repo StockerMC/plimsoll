@@ -1,6 +1,6 @@
 {
   "run_id": "cella-2026-10-28-ensemble-ratio-every",
-  "commit": "086a09c",
+  "commit": "c316ccf",
   "cell": "a",
   "recommender": "ensemble-ratio",
   "actuator": "every",
@@ -47,40 +47,40 @@
   },
   "collections": 203,
   "groups": 195,
-  "collection_days": 6087,
-  "windows_scored": 1695647,
-  "instance_windows": 10147558,
+  "collection_days": 5887,
+  "windows_scored": 1695447,
+  "instance_windows": 10146348,
   "skipped_rows": 5461,
-  "mean_relative_slack": 0.2703353033377187,
-  "median_relative_slack": 0.21521138794314185,
-  "memory_time": 47490353.43999075,
-  "limit_changes_per_collection_day": 0.3527189091506489,
-  "exceedance_windows_per_collection_day": 0.11664202398554296,
-  "exceedance_free_collection_day_fraction": 0.9334647609659931,
-  "pass_seconds": 19.034952291,
-  "pass_runs": 2,
-  "windows_per_second": 190446.81303005005,
+  "mean_relative_slack": 0.2698181032679299,
+  "median_relative_slack": 0.21206519454647987,
+  "memory_time": 47485268.164947145,
+  "limit_changes_per_collection_day": 0.36470188551044674,
+  "exceedance_windows_per_collection_day": 0.12060472226940717,
+  "exceedance_free_collection_day_fraction": 0.931204348564634,
+  "pass_seconds": 66.642037,
+  "pass_runs": 18,
+  "windows_per_second": 489575.5812506151,
   "tracking": {
     "fully_automated": {
       "collections": 107,
       "updates": 7802,
       "mean_abs_rel_error": {
-        "0": 0.2682127098971921,
-        "1": 0.2681936814467066,
-        "12": 0.26859978040960264,
-        "2": 0.26821028601257274
+        "0": 0.26821188326736023,
+        "1": 0.2681928525385644,
+        "12": 0.26859900012450205,
+        "2": 0.26820945909252897
       },
       "median_abs_rel_error": {
-        "0": 0.09748283816491447,
-        "1": 0.09752614822142633,
-        "12": 0.09782383560656666,
-        "2": 0.09755854766544786
+        "0": 0.09747763373570995,
+        "1": 0.09752094897781287,
+        "12": 0.09781867200559986,
+        "2": 0.09755335230107817
       },
       "post_update_mean_abs_rel_error": {
-        "0": 0.3101002956929642,
-        "1": 0.30939086128218407,
-        "12": 0.31621789556486607,
-        "2": 0.3096466792984203
+        "0": 0.3101049353456033,
+        "1": 0.30939548800346284,
+        "12": 0.31622236353138683,
+        "2": 0.3096512915874483
       },
       "post_update_collections": 107,
       "direction_agreement": 0.05052479231645333
@@ -89,10 +89,10 @@
       "collections": 96,
       "updates": 9,
       "mean_abs_rel_error": {
-        "0": 0.5241973929407927,
-        "1": 0.5241970820861176,
-        "12": 0.5241936626846911,
-        "2": 0.5241967712314424
+        "0": 0.5241999271667643,
+        "1": 0.52419961627487,
+        "12": 0.5241961964640326,
+        "2": 0.5241993053829757
       },
       "median_abs_rel_error": {
         "0": 0.5408206279990616,

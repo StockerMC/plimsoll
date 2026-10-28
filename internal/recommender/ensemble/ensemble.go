@@ -26,6 +26,10 @@ type Options struct {
 	// defaults.
 	Weights ml.Weights
 	Decay   float64
+	// Fall hysteresis on the selector's recommendation; zero windows
+	// follows every fall at once.
+	FallFraction float64
+	FallWindows  int
 }
 
 var (
@@ -71,14 +75,16 @@ func New(o Options) *ml.Selector {
 		}))
 	}
 	return ml.New(ml.Options{
-		Buckets:     o.Buckets,
-		Arms:        arms,
-		Weights:     weights,
-		Decay:       costDecay,
-		MaxWindows:  hourWindows,
-		ColdWindows: hourWindows,
-		Margin:      margin,
-		MinMemory:   o.MinMemory,
-		OOMMinBump:  o.OOMMinBump,
+		Buckets:      o.Buckets,
+		Arms:         arms,
+		Weights:      weights,
+		Decay:        costDecay,
+		MaxWindows:   hourWindows,
+		FallFraction: o.FallFraction,
+		FallWindows:  o.FallWindows,
+		ColdWindows:  hourWindows,
+		Margin:       margin,
+		MinMemory:    o.MinMemory,
+		OOMMinBump:   o.OOMMinBump,
 	})
 }

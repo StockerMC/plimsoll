@@ -236,6 +236,23 @@ func TestRecommendationHoldsHigherLimitForMaxWindows(t *testing.T) {
 	}
 }
 
+// With a one-window ring the recommendation is the arm's limit. Its fall
+// from 10 to 5 is more than 10% and is followed on the third window in a
+// row, to 5; the rise to 20 is followed at once; the fall to 19 is under
+// 10% and never followed.
+func TestFallHysteresisFollowsFallsLateAndRisesAtOnce(t *testing.T) {
+	s := New(Options{Buckets: unitBuckets(t, 30), Arms: []Arm{&script{limits: []float64{0, 10, 5, 5, 5, 5, 20, 19}}},
+		Decay: 0.2, MaxWindows: 1, FallFraction: 0.1, FallWindows: 3})
+	at := t0
+	for i, want := range []float64{10, 10, 10, 5, 5, 20, 20, 20, 20, 20} {
+		s.Observe(recommender.Sample{Time: at, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 0.5}}})
+		at = at.Add(step)
+		if got := s.Recommend().Target; got != want {
+			t.Errorf("window %d: Recommend = %v, want %v", i, got, want)
+		}
+	}
+}
+
 // The arm holds 5 before the window and 10 after it. One task at 7.5 overruns
 // 5 (cost 5) and is under 10 (cost 1); the cost charged must be the first,
 // or the arm is scored on a fit to the window it is scored against.

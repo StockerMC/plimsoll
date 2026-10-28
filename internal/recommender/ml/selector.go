@@ -18,6 +18,11 @@ type Options struct {
 	Decay float64
 	// Windows over which the recommendation is the max of recent limits.
 	MaxWindows int
+	// A fall in that max is followed only once it has stayed at least
+	// FallFraction below the recommendation for FallWindows windows in a
+	// row; a rise is followed at once. FallWindows 0 follows every fall.
+	FallFraction float64
+	FallWindows  int
 	// Windows before the selector's choice is used; until then the limit
 	// is the largest peak seen, with margin.
 	ColdWindows int
@@ -39,6 +44,8 @@ type Selector struct {
 	chosen  int       // arm behind the latest limit, -1 before the first window
 	limit   float64   // latest selected limit
 	ring    []float64 // last MaxWindows limits
+	held    float64   // recommendation, the ring max under the fall hysteresis
+	below   int       // windows in a row the ring max has sat FallFraction under held
 	seen    int
 	peak    float64
 	peaks   map[string]float64         // each instance's peak in the last window
@@ -130,6 +137,25 @@ func (s *Selector) Add(counts []float64, at time.Time) {
 	if len(s.ring) > max(s.opts.MaxWindows, 1) {
 		s.ring = s.ring[1:]
 	}
+	s.hold(slices.Max(s.ring))
+}
+
+// hold moves the recommendation to the ring max m, at once when m is
+// higher and after FallWindows windows at least FallFraction lower.
+func (s *Selector) hold(m float64) {
+	switch {
+	case m > s.held || s.opts.FallWindows == 0:
+		s.held = m
+		s.below = 0
+	case m < s.held*(1-s.opts.FallFraction):
+		s.below++
+		if s.below >= s.opts.FallWindows {
+			s.held = m
+			s.below = 0
+		}
+	default:
+		s.below = 0
+	}
 }
 
 // Limit is the latest selected limit, before the max over the last hour.
@@ -137,13 +163,10 @@ func (s *Selector) Limit() float64 {
 	return s.limit
 }
 
-// Recommend returns the max of the last MaxWindows limits, floored at
-// MinMemory, as target and both bounds.
+// Recommend returns the max of the last MaxWindows limits under the fall
+// hysteresis, floored at MinMemory, as target and both bounds.
 func (s *Selector) Recommend() recommender.Recommendation {
-	v := s.opts.MinMemory
-	for _, l := range s.ring {
-		v = math.Max(v, l)
-	}
+	v := math.Max(s.held, s.opts.MinMemory)
 	return recommender.Recommendation{Target: v, Lower: v, Upper: v}
 }
 
@@ -162,6 +185,7 @@ func (s *Selector) RecordOOM(instance string, at time.Time, request float64) err
 	} else {
 		s.ring[len(s.ring)-1] = math.Max(s.ring[len(s.ring)-1], s.limit)
 	}
+	s.held = math.Max(s.held, s.limit)
 	return nil
 }
 

@@ -22,25 +22,37 @@ type Options struct {
 	OOMMinBump float64
 	// Leave out the moving-window arm, the paper's configuration.
 	ArgminOnly bool
+	// The selector's global cost weights and decay; zero means the
+	// defaults.
+	Weights ml.Weights
+	Decay   float64
 }
 
 var (
 	halfLives = []time.Duration{6 * time.Hour, 12 * time.Hour, 24 * time.Hour, 48 * time.Hour, 7 * 24 * time.Hour}
 	margins   = []float64{0, 0.05, 0.10, 0.15, 0.25}
-	weights   = ml.Weights{Overrun: 5, Underrun: 1, LimitChange: 0.1, ModelChange: 0.1}
+	// DefaultWeights and DefaultDecay are the selector's globals.
+	DefaultWeights = ml.Weights{Overrun: 5, Underrun: 1, LimitChange: 0.1, ModelChange: 0.1}
 )
 
 const (
+	DefaultDecay   = 0.2
 	windowHalfLife = 48 * time.Hour
 	percentile     = 0.98
 	// An hour at the paper's 5-minute window; a shorter --memory-window
 	// shortens the cold start and the max with it.
 	hourWindows = 12
-	costDecay   = 0.2
 )
 
 // New returns the configured selector.
 func New(o Options) *ml.Selector {
+	weights, costDecay := o.Weights, o.Decay
+	if weights == (ml.Weights{}) {
+		weights = DefaultWeights
+	}
+	if costDecay == 0 {
+		costDecay = DefaultDecay
+	}
 	margin := window.StepMargin(o.LargeLimit)
 	var arms []ml.Arm
 	for _, hl := range halfLives {

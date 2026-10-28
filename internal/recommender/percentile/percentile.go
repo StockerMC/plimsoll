@@ -22,6 +22,10 @@ type Options struct {
 	// histogram's decay. Zero means upstream's 24 h.
 	AggregationInterval time.Duration
 	HalfLife            time.Duration
+	// Percentile read for the target and the margin added to every
+	// estimate. Zero means upstream's 0.9 and 0.15.
+	TargetPercentile float64
+	SafetyMargin     float64
 }
 
 // Recommender is the upstream VPA memory recommender: a decaying histogram of
@@ -44,6 +48,12 @@ func New(opts Options) *Recommender {
 	}
 	if opts.HalfLife == 0 {
 		opts.HalfLife = defaultHalfLife
+	}
+	if opts.TargetPercentile == 0 {
+		opts.TargetPercentile = targetPercentile
+	}
+	if opts.SafetyMargin == 0 {
+		opts.SafetyMargin = safetyMargin
 	}
 	return &Recommender{
 		opts:      opts,
@@ -73,7 +83,7 @@ func (r *Recommender) Observe(s recommender.Sample) {
 // multiplier on the bounds, then the floor.
 func (r *Recommender) Recommend() recommender.Recommendation {
 	c := confidence(r.first, r.last, r.samples, r.opts.SamplesPerDay)
-	target := r.estimate(targetPercentile)
+	target := r.estimate(r.opts.TargetPercentile)
 	lower := withConfidence(r.estimate(lowerPercentile), 0.001, -2, c)
 	upper := withConfidence(r.estimate(upperPercentile), 1, 1, c)
 	return recommender.Recommendation{
@@ -100,7 +110,7 @@ func (r *Recommender) RecordOOM(instance string, at time.Time, request float64) 
 }
 
 func (r *Recommender) estimate(percentile float64) float64 {
-	return withMargin(r.peaks.Percentile(percentile), safetyMargin)
+	return withMargin(r.peaks.Percentile(percentile), r.opts.SafetyMargin)
 }
 
 func (r *Recommender) instance(name string) *instance {

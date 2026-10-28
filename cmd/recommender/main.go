@@ -11,6 +11,7 @@ import (
 	"github.com/StockerMC/plimsoll/internal/histogram"
 	"github.com/StockerMC/plimsoll/internal/kube"
 	"github.com/StockerMC/plimsoll/internal/recommender/ensemble"
+	"github.com/StockerMC/plimsoll/internal/recommender/ml"
 	"github.com/StockerMC/plimsoll/internal/recommender/percentile"
 )
 
@@ -26,6 +27,8 @@ func main() {
 	minMemoryMB := flag.Float64("pod-recommendation-min-memory-mb", 250, "floor on every memory recommendation")
 	fallFraction := flag.Float64("ensemble-fall-fraction", 0.1, "fraction the ensemble's hourly max must fall by before the recommendation follows it")
 	fallWindows := flag.Int("ensemble-fall-windows", 0, "memory windows in a row the fall must last; 0 follows every fall at once")
+	overrunWeight := flag.Float64("ensemble-overrun-weight", ensemble.DefaultWeights.Overrun, "selector cost weight on usage above the limit")
+	limitChangeWeight := flag.Float64("ensemble-limit-change-weight", ensemble.DefaultWeights.LimitChange, "selector cost weight on a change of limit")
 	checkpoints := flag.Bool("checkpoints", true, "restore from and save to VerticalPodAutoscalerCheckpoint objects")
 	once := flag.Bool("once", false, "run one pass and exit")
 	flag.Parse()
@@ -53,10 +56,16 @@ func main() {
 			HalfLife:            *halfLife,
 		},
 		ensembleOpts: ensemble.Options{
-			Buckets:      buckets,
-			MinMemory:    *minMemoryMB * 1024 * 1024,
-			LargeLimit:   1 << 30,
-			OOMMinBump:   100 << 20,
+			Buckets:    buckets,
+			MinMemory:  *minMemoryMB * 1024 * 1024,
+			LargeLimit: 1 << 30,
+			OOMMinBump: 100 << 20,
+			Weights: ml.Weights{
+				Overrun:     *overrunWeight,
+				Underrun:    ensemble.DefaultWeights.Underrun,
+				LimitChange: *limitChangeWeight,
+				ModelChange: ensemble.DefaultWeights.ModelChange,
+			},
 			FallFraction: *fallFraction,
 			FallWindows:  *fallWindows,
 		},

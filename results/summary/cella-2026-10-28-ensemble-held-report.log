@@ -1,0 +1,5 @@
+cella-2026-10-28-ensemble-held-every: 203 collections, 6087 days, slack 0.2580 (median 0.2083), exceedance/day 0.1452 (0.0087% of 10147558 instance-windows), changes/day 0.3591, free days 0.888, memory-time 4.77755e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2751 1:0.2751 2:0.2751 12:0.2752], post-update [0:0.2987 1:0.2984 2:0.2989 12:0.3047], agreement 0.061
+cella-2026-10-28-ensemble-held-updater: 203 collections, 6087 days, slack 0.2520 (median 0.2059), exceedance/day 2.4120 (0.1447% of 10147558 instance-windows), changes/day 0.2594, free days 0.873, memory-time 4.73617e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2661 1:0.2661 2:0.2660 12:0.2658], post-update [0:0.2886 1:0.2879 2:0.2877 12:0.2858], agreement 0.031
+2 runs over 203 collections in 21.2 s, 170859 windows/s

@@ -4,10 +4,10 @@ Actuator updater, split report, 203 collections in 195 groups. Bootstrap 95% CI 
 
 | metric | value |
 |---|---|
-| mean slack, candidate | 0.2520 |
-| mean slack, baseline | 0.1522 |
-| paired slack difference | +0.0998 [+0.0885, +0.1112] |
+| mean slack, candidate | 0.2515 |
+| mean slack, baseline | 0.1518 |
+| paired slack difference | +0.0997 [+0.0885, +0.1111] |
 | memory-time change | +14.06% |
-| exceedance windows per collection-day, candidate / baseline | 2.4120 / 32.7081 (ratio 0.074) |
-| limit changes per collection-day, candidate / baseline | 0.2594 / 0.4041 (ratio 0.642) |
+| exceedance windows per collection-day, candidate / baseline | 2.4940 / 33.8169 (ratio 0.074) |
+| limit changes per collection-day, candidate / baseline | 0.2680 / 0.4174 (ratio 0.642) |
 | win fraction | 0.034 |

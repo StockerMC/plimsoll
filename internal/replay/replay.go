@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"maps"
 	"time"
 
 	"github.com/StockerMC/plimsoll/internal/metrics"
@@ -28,7 +29,7 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 		rec = newRec()
 	}
 	act := newAct(steps[0].Assigned, steps[0].Time)
-	req := requests{current: c.Requests, updates: c.Updates}
+	req := requests{current: maps.Clone(c.Requests), updates: c.Updates}
 	s.From = len(steps)
 	for i, step := range steps {
 		if s.From == len(steps) && step.Time.Sub(steps[0].Time) >= ColdStart {

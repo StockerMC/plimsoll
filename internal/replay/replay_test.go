@@ -43,6 +43,18 @@ func TestLimitIsSetBeforeTheWindowIsObserved(t *testing.T) {
 	}
 }
 
+// Replaying the request updates must not change the collection, or the
+// second run over it starts from the last request instead of the first.
+func TestRunLeavesTheCollectionUnchanged(t *testing.T) {
+	c := collection(600)
+	c.Updates = []trace.Update{{Time: t0.Add(time.Hour), Instance: 0, ReqMem: 2}}
+	first := Run(c, nil, Every)
+	second := Run(c, nil, Every)
+	if first.Points[0].Request != 1 || second.Points[0].Request != 1 {
+		t.Errorf("request before the update: %v then %v, want 1 both times", first.Points[0].Request, second.Points[0].Request)
+	}
+}
+
 func TestUpdaterRule(t *testing.T) {
 	tests := []struct {
 		name                 string

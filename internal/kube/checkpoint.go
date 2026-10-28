@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -46,6 +47,10 @@ var ErrUnusableCheckpoint = errors.New("unusable checkpoint")
 // workload, does not restore the old workload's history.
 const workloadAnnotation = "plimsoll/workload"
 
+// windowsAnnotation holds the open aggregation windows as JSON; upstream's
+// checkpoint status has no field for them and the CRD prunes unknown ones.
+const windowsAnnotation = "plimsoll/open-windows"
+
 // checkpointName is upstream's naming, <vpa>-<container>. foo/bar-baz and
 // foo-bar/baz share a name, so reads and writes check the spec.
 func checkpointName(vpa, container string) string {
@@ -86,6 +91,12 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return recommender.Checkpoint{}, false, fmt.Errorf("%w: %s/%s status: %v", ErrUnusableCheckpoint, namespace, name, err)
 	}
+	var windows []recommender.OpenWindow
+	if w := obj.GetAnnotations()[windowsAnnotation]; w != "" {
+		if err := json.Unmarshal([]byte(w), &windows); err != nil {
+			return recommender.Checkpoint{}, false, fmt.Errorf("%w: %s/%s open windows: %v", ErrUnusableCheckpoint, namespace, name, err)
+		}
+	}
 	return recommender.Checkpoint{
 		Version: s.Version,
 		Histogram: histogram.Checkpoint{
@@ -96,6 +107,7 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 		First:   s.FirstSampleStart.Time,
 		Last:    s.LastSampleStart.Time,
 		Samples: s.TotalSamplesCount,
+		Windows: windows,
 	}, true, nil
 }
 
@@ -118,10 +130,15 @@ func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	if err != nil {
 		return fmt.Errorf("marshal checkpoint: %w", err)
 	}
+	windows, err := json.Marshal(c.Windows)
+	if err != nil {
+		return fmt.Errorf("marshal open windows: %w", err)
+	}
+	annotations := map[string]string{workloadAnnotation: workload, windowsAnnotation: string(windows)}
 	name := checkpointName(vpa, container)
-	err = putCheckpoint(ctx, client, namespace, name, vpa, container, workload, status)
+	err = putCheckpoint(ctx, client, namespace, name, vpa, container, annotations, status)
 	if apierrors.IsConflict(err) {
-		err = putCheckpoint(ctx, client, namespace, name, vpa, container, workload, status)
+		err = putCheckpoint(ctx, client, namespace, name, vpa, container, annotations, status)
 	}
 	if err != nil {
 		return fmt.Errorf("put checkpoint %s/%s: %w", namespace, name, err)
@@ -129,17 +146,18 @@ func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	return nil
 }
 
-func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, name, vpa, container, workload string, status map[string]any) error {
+func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, name, vpa, container string, annotations map[string]string, status map[string]any) error {
 	res := client.Resource(checkpointResource).Namespace(namespace)
 	obj, err := res.Get(ctx, name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		obj = &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "autoscaling.k8s.io/v1",
 			"kind":       "VerticalPodAutoscalerCheckpoint",
-			"metadata":   map[string]any{"name": name, "namespace": namespace, "annotations": map[string]any{workloadAnnotation: workload}},
+			"metadata":   map[string]any{"name": name, "namespace": namespace},
 			"spec":       map[string]any{"vpaObjectName": vpa, "containerName": container},
 			"status":     status,
 		}}
+		obj.SetAnnotations(annotations)
 		_, err = res.Create(ctx, obj, metav1.CreateOptions{})
 		return err
 	}
@@ -149,12 +167,12 @@ func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, nam
 	if err := checkOwner(obj, vpa, container); err != nil {
 		return err
 	}
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
+	merged := obj.GetAnnotations()
+	if merged == nil {
+		merged = make(map[string]string)
 	}
-	annotations[workloadAnnotation] = workload
-	obj.SetAnnotations(annotations)
+	maps.Copy(merged, annotations)
+	obj.SetAnnotations(merged)
 	obj.Object["status"] = status
 	_, err = res.Update(ctx, obj, metav1.UpdateOptions{})
 	return err

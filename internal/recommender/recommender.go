@@ -43,6 +43,19 @@ type Checkpoint struct {
 	First     time.Time
 	Last      time.Time
 	Samples   int
+	// Aggregation windows still open, whose peaks are already in the
+	// histogram, so a sample after a restore replaces a peak instead of
+	// adding a second one for the same window.
+	Windows []OpenWindow
+}
+
+// OpenWindow is one instance's open aggregation window.
+type OpenWindow struct {
+	Instance   string
+	End        time.Time
+	Peak       float64
+	OOMPeak    float64
+	LastSample time.Time
 }
 
 // Checkpointer is implemented by recommenders whose state can be saved and

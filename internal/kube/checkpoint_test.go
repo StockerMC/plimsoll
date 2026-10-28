@@ -23,6 +23,7 @@ func TestCheckpointRefusesOtherOwner(t *testing.T) {
 		First:     at,
 		Last:      at.Add(2 * time.Minute),
 		Samples:   2,
+		Windows:   []recommender.OpenWindow{{Instance: "pod-1", End: at.Add(24 * time.Hour), Peak: 3e8, LastSample: at.Add(2 * time.Minute)}},
 	}
 	if err := PutCheckpoint(ctx, client, "ns", "foo", "bar-baz", "uid-1/Deployment/foo", want, at); err != nil {
 		t.Fatal(err)
@@ -34,7 +35,8 @@ func TestCheckpointRefusesOtherOwner(t *testing.T) {
 	}
 	if got.Version != want.Version || !got.First.Equal(want.First) || !got.Last.Equal(want.Last) || got.Samples != want.Samples ||
 		!got.Histogram.ReferenceTimestamp.Equal(want.Histogram.ReferenceTimestamp) ||
-		!maps.Equal(got.Histogram.BucketWeights, want.Histogram.BucketWeights) || got.Histogram.TotalWeight != want.Histogram.TotalWeight {
+		!maps.Equal(got.Histogram.BucketWeights, want.Histogram.BucketWeights) || got.Histogram.TotalWeight != want.Histogram.TotalWeight ||
+		len(got.Windows) != 1 || got.Windows[0].Instance != "pod-1" || !got.Windows[0].End.Equal(want.Windows[0].End) || got.Windows[0].Peak != want.Windows[0].Peak {
 		t.Fatalf("GetCheckpoint = %+v, want %+v", got, want)
 	}
 

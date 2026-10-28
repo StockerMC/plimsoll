@@ -100,6 +100,12 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	if err != nil {
 		return errors.Join(usageErr, err)
 	}
+	policies := make(map[string]kube.MemoryPolicy)
+	for _, name := range target.Containers {
+		if policies[name], err = kube.ContainerMemoryPolicy(vpa, name); err != nil {
+			return errors.Join(usageErr, err)
+		}
+	}
 	ooms := st.oom.Scan(pods)
 	var rec kube.Recommendation
 	for _, name := range target.Containers {
@@ -118,7 +124,15 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 				l.recordOOM(c, o)
 			}
 		}
+		if l.checkpoints {
+			l.save(ctx, vpa, name, c)
+		}
+		p := policies[name]
+		if p.Skip {
+			continue
+		}
 		r := c.model.Recommend()
+		r.Target, r.Lower, r.Upper = p.Cap(r.Target), p.Cap(r.Lower), p.Cap(r.Upper)
 		rec.ContainerRecommendations = append(rec.ContainerRecommendations, kube.ContainerRecommendation{
 			ContainerName: name,
 			Target:        memory(r.Target),
@@ -127,9 +141,6 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 		})
 		log.Printf("%s/%s %s: target %s lower %s upper %s", vpa.GetNamespace(), vpa.GetName(), name,
 			quantity(r.Target), quantity(r.Lower), quantity(r.Upper))
-		if l.checkpoints {
-			l.save(ctx, vpa, name, c)
-		}
 	}
 	return errors.Join(usageErr, kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now())))
 }

@@ -1,0 +1,18 @@
+# Same target as deploy/demo/vpa.yaml, handled by the ensemble.
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: demo-ensemble
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo
+  recommenders:
+    - name: plimsoll-ensemble
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["memory"]

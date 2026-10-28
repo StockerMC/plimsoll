@@ -236,20 +236,32 @@ func TestRecommendationHoldsHigherLimitForMaxWindows(t *testing.T) {
 	}
 }
 
-// With a one-window ring the recommendation is the arm's limit. Its fall
-// from 10 to 5 is more than 10% and is followed on the third window in a
-// row, to 5; the rise to 20 is followed at once; the fall to 19 is under
-// 10% and never followed.
-func TestFallHysteresisFollowsFallsLateAndRisesAtOnce(t *testing.T) {
-	s := New(Options{Buckets: unitBuckets(t, 30), Arms: []Arm{&script{limits: []float64{0, 10, 5, 5, 5, 5, 20, 19}}},
-		Decay: 0.2, MaxWindows: 1, FallFraction: 0.1, FallWindows: 3})
-	at := t0
-	for i, want := range []float64{10, 10, 10, 5, 5, 20, 20, 20, 20, 20} {
-		s.Observe(recommender.Sample{Time: at, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 0.5}}})
-		at = at.Add(step)
-		if got := s.Recommend().Target; got != want {
-			t.Errorf("window %d: Recommend = %v, want %v", i, got, want)
-		}
+// With a one-window ring the recommendation is the arm's limit. A fall of
+// more than 10% is followed on the third window in a row and a rise at
+// once; a fall under 10% is never followed, and a window back within 10%
+// restarts the count.
+func TestFallHysteresis(t *testing.T) {
+	tests := []struct {
+		name   string
+		limits []float64
+		want   []float64
+	}{
+		{"falls late, rises at once", []float64{0, 10, 5, 5, 5, 5, 20, 19}, []float64{10, 10, 10, 5, 5, 20, 20, 20, 20, 20}},
+		{"interrupted fall restarts", []float64{0, 10, 5, 5, 9.5, 5, 5, 5}, []float64{10, 10, 10, 10, 10, 10, 5}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := New(Options{Buckets: unitBuckets(t, 30), Arms: []Arm{&script{limits: tt.limits}},
+				Decay: 0.2, MaxWindows: 1, FallFraction: 0.1, FallWindows: 3})
+			at := t0
+			for i, want := range tt.want {
+				s.Observe(recommender.Sample{Time: at, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 0.5}}})
+				at = at.Add(step)
+				if got := s.Recommend().Target; got != want {
+					t.Errorf("window %d: Recommend = %v, want %v", i, got, want)
+				}
+			}
+		})
 	}
 }
 

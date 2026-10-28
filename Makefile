@@ -1,4 +1,4 @@
-.PHONY: test vet kind-up kind-down smoke demo scenarios replay
+.PHONY: test vet kind-up kind-down smoke demo scenarios replay trace-kind
 
 test: vet
 	go test ./...
@@ -23,3 +23,6 @@ scenarios:
 
 replay:
 	scripts/replay-all.sh $(STEP)
+
+trace-kind:
+	scripts/trace-kind.sh $(COMPRESSION)

@@ -41,6 +41,7 @@ type Selector struct {
 	ring    []float64 // last MaxWindows limits
 	seen    int
 	peak    float64
+	peaks   map[string]float64         // each instance's peak in the last window
 	pending []recommender.InstancePeak // OOM bumps for the next window
 }
 
@@ -53,6 +54,7 @@ func New(opts Options) *Selector {
 		tops:   recommender.BucketTops(opts.Buckets),
 		costs:  make([]float64, len(opts.Arms)),
 		chosen: -1,
+		peaks:  make(map[string]float64),
 	}
 }
 
@@ -63,6 +65,10 @@ func (s *Selector) Observe(sample recommender.Sample) {
 	s.pending = nil
 	if len(peaks) == 0 {
 		return
+	}
+	clear(s.peaks)
+	for _, p := range sample.Peaks {
+		s.peaks[p.Instance] = p.Peak
 	}
 	s.Add(recommender.Sample{Time: sample.Time, Peaks: peaks}.Counts(s.opts.Buckets), sample.Time)
 }
@@ -141,12 +147,21 @@ func (s *Selector) Recommend() recommender.Recommendation {
 	return recommender.Recommendation{Target: v, Lower: v, Upper: v}
 }
 
-// RecordOOM adds the larger of request plus OOMMinBump and 1.2 times
-// request as one more peak in the next window, the bump upstream VPA uses,
-// so an OOM moves every arm.
+// RecordOOM raises the limit at once to the bump upstream VPA uses, the
+// larger of OOMMinBump and 20% over the request or the instance's last
+// peak, and adds that value as one more peak in the next window. One peak
+// among hours of decayed history barely moves an arm, so without the
+// immediate raise a container could OOM again before any arm reacted.
 func (s *Selector) RecordOOM(instance string, at time.Time, request float64) error {
-	needed := math.Max(request+s.opts.OOMMinBump, request*1.2)
+	used := math.Max(request, s.peaks[instance])
+	needed := math.Max(used+s.opts.OOMMinBump, used*1.2)
 	s.pending = append(s.pending, recommender.InstancePeak{Instance: instance, Peak: needed})
+	s.limit = math.Max(s.limit, needed)
+	if len(s.ring) == 0 {
+		s.ring = append(s.ring, s.limit)
+	} else {
+		s.ring[len(s.ring)-1] = math.Max(s.ring[len(s.ring)-1], s.limit)
+	}
 	return nil
 }
 

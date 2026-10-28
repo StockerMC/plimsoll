@@ -232,6 +232,28 @@ func (s *script) Add([]float64, time.Time) {
 
 func (s *script) Limit() float64 { return s.limits[s.i] }
 
+// An OOM at request 8 with the instance's last peak at 10 bumps to 12 at
+// once and the ring holds it; the next window carries the bump as a peak,
+// which lands in the bucket whose top is 13.
+func TestRecordOOMRaisesLimitAtOnce(t *testing.T) {
+	buckets := unitBuckets(t, 20)
+	s := New(Options{Buckets: buckets, Arms: []Arm{fixed(5)}, Decay: 0.2, MaxWindows: 2, OOMMinBump: 1})
+	s.Observe(recommender.Sample{Time: t0, Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 10}}})
+	if err := s.RecordOOM("a", t0.Add(time.Minute), 8); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.Recommend().Target; got != 12 {
+		t.Errorf("after the OOM: Recommend = %v, want 12", got)
+	}
+	s.Observe(recommender.Sample{Time: t0.Add(step), Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 0.5}}})
+	if got := s.Recommend().Target; got != 12 {
+		t.Errorf("one window after the OOM: Recommend = %v, want 12 held by the ring", got)
+	}
+	if got := s.peak; got != 13 {
+		t.Errorf("largest peak seen = %v, want 13, the top of the bucket the bump 12 fell in", got)
+	}
+}
+
 func TestRecommendationHoldsHigherLimitForMaxWindows(t *testing.T) {
 	buckets := unitBuckets(t, 20)
 	s := New(Options{Buckets: buckets, Arms: []Arm{&script{limits: []float64{0, 10, 1}}}, Decay: 0.2, MaxWindows: 3})

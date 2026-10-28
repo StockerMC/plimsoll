@@ -1,6 +1,7 @@
 package window
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -42,16 +43,12 @@ func TestStatistics(t *testing.T) {
 		steps []step
 	}{
 		{
-			// Fig. 2 of the paper: nine windows of one task at 1 and one
-			// window of ten tasks at 10. Load is 9 at usage 1 and 100 at
-			// usage 10, so the 90th percentile by load is 10.
-			name: "percentile is by load, not by time",
-			opts: Options{Stat: Percentile, Percentile: 0.9, HalfLife: 1000 * time.Hour},
-			steps: []step{
-				{1, 1, 0, 0, 0}, {1, 1, 0, 0, 0}, {1, 1, 0, 0, 0}, {1, 1, 0, 0, 0}, {1, 1, 0, 0, 0},
-				{1, 1, 0, 0, 0}, {1, 1, 0, 0, 0}, {1, 1, 0, 0, 0}, {1, 1, 0, 1, 0},
-				{10, 10, 0, 10, 0},
-			},
+			// Nineteen windows of one task at 1 and one of one task at 10.
+			// Load is 19 at usage 1 and 10 at usage 10, so the 90th
+			// percentile by load is 10; by task or by window it is 1.
+			name:  "percentile is by load, not by task count",
+			opts:  Options{Stat: Percentile, Percentile: 0.9, HalfLife: 1000 * time.Hour},
+			steps: append(slices.Repeat([]step{{1, 1, 0, 0, 0}}, 18), step{1, 1, 0, 1, 0}, step{1, 10, 0, 10, 0}),
 		},
 		{
 			name: "peak forgets a window after exactly N windows",

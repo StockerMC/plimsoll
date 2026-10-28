@@ -126,9 +126,9 @@ func (r *Recommender) raw() float64 {
 }
 
 // percentile reads the first bucket at which the cumulative load, task
-// count times usage, reaches p of the total. Fig. 2 of the paper: nine
-// windows of one task at usage 1 and one window of ten tasks at usage 10
-// put the 90th percentile at 10, where a percentile of samples would say 1.
+// count times usage, reaches p of the total (Fig. 2 of the paper). Nineteen
+// tasks at usage 1 and one at usage 10 put the 90th percentile at 10, where
+// a percentile of tasks would say 1.
 func (r *Recommender) percentile(p float64) float64 {
 	total := 0.0
 	for k, w := range r.usage {

@@ -12,6 +12,14 @@ Recommenders: `percentile` (the upstream VPA port at upstream's defaults), `perc
 
 Actuators: `every` sets the limit to the target whenever it changes. `updater` is a simplified form of upstream VPA's updater: change when the request is outside the recommendation's bounds, or differs from the target by 10% or more and the last change is at least 12 h old (upstream checks pod age instead); the request starts at the trace's `assigned_memory` of the collection's first window. `window`, `ml`, `ensemble`, `ensemble-held`, `assigned` and `naive` report bounds equal to their target, for which the bounds test would fire at every drift, so for them only the 10%/12 h rule applies.
 
+## ensemble-held
+
+The report split is held out from tuning; the hypothesis was formed after the first report run, so it is not held out from hypothesis formation. Its grid and the frozen `ensemble-held` block were committed before the report split was replayed.
+
+Budget for every comparison of `ensemble-held`: the report-split `window` row of the same actuator times 1.10. Under `every` that is 1.1656 exceedance windows and 0.4473 limit changes per collection-day; the candidate has 0.1452 and 0.3591, inside both. Under `updater` it is 2.5390 and 0.0880; the candidate has 2.4120, inside, and 0.2594 changes, outside, so no updater comparison of `ensemble-held` is within budget.
+
+`cmd/recommender` runs the same selector configuration with `--ensemble-fall-fraction 0.1 --ensemble-fall-windows 288 --ensemble-overrun-weight 100 --ensemble-limit-change-weight 0` at the default 5-minute `--memory-window`.
+
 ## Definitions
 
 Windows are the trace's five-minute windows; one peak per instance per window from `maximum_usage.memory`, rows with it missing or zero dropped (`skipped_rows`). The limit scored for a window is the one in force before the window was observed. The first 48 h of every collection are not scored, for every recommender alike. Memory is a fraction of the largest machine, never bytes.

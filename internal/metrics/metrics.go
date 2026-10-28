@@ -36,8 +36,9 @@ type Series struct {
 
 // Summary scores the windows from From on.
 type Summary struct {
-	Days    int
-	Windows int
+	Days            int
+	Windows         int
+	InstanceWindows int
 	// Mean over collection-days of (mean limit - p95 of window averages) / mean limit.
 	MeanSlack float64
 	// Sum over instance-windows of limit times seconds.
@@ -69,6 +70,7 @@ func Summarize(s Series) Summary {
 		d.limits = append(d.limits, p.Limit)
 		for _, u := range p.Usage {
 			d.avgs = append(d.avgs, u.Avg)
+			out.InstanceWindows++
 			out.MemoryTime += p.Limit * u.Seconds
 			if u.Max > p.Limit {
 				out.Exceedances++

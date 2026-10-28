@@ -25,7 +25,7 @@ func TestSummarizeScoresOneDay(t *testing.T) {
 		{Limit: 10, Usage: []Usage{{0, 5, 12, 300}, {1, 7, 5, 300}}},
 	}}
 	got := Summarize(s)
-	want := Summary{Days: 1, Windows: 3, MeanSlack: 0.2, MemoryTime: 18000, Exceedances: 2}
+	want := Summary{Days: 1, Windows: 3, InstanceWindows: 6, MeanSlack: 0.2, MemoryTime: 18000, Exceedances: 2}
 	if math.Abs(got.MeanSlack-want.MeanSlack) > 1e-12 {
 		t.Errorf("slack %v, want %v", got.MeanSlack, want.MeanSlack)
 	}

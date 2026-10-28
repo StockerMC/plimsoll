@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"math"
+	"slices"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 
 	"github.com/StockerMC/plimsoll/internal/kube"
@@ -30,8 +31,17 @@ type loop struct {
 	opts         percentile.Options
 	ensembleOpts ensemble.Options
 	checkpoints  bool
-	containers   map[string]*container
-	oom          map[string]*kube.OOMDetector
+	// Keyed by VPA UID, so a VPA deleted and recreated under the same name
+	// starts over.
+	vpas map[types.UID]*vpaState
+}
+
+// vpaState is the state kept for one VPA between passes.
+type vpaState struct {
+	// targetRef the models were built for.
+	target     string
+	containers map[string]*container
+	oom        *kube.OOMDetector
 }
 
 // container is the state kept for one container of one VPA between passes.
@@ -51,9 +61,16 @@ func (l *loop) runOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	listed := make(map[types.UID]bool)
 	var errs []error
 	for i := range vpas {
+		listed[vpas[i].GetUID()] = true
 		errs = append(errs, l.update(ctx, &vpas[i]))
+	}
+	for uid := range l.vpas {
+		if !listed[uid] {
+			delete(l.vpas, uid)
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -63,10 +80,16 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	if err != nil {
 		return err
 	}
+	st := l.state(vpa)
+	for name := range st.containers {
+		if !slices.Contains(target.Containers, name) {
+			delete(st.containers, name)
+		}
+	}
 	// A failed read is retried next pass before anything is observed, saved
 	// or published, so a transient error cannot overwrite the checkpoint.
 	for _, name := range target.Containers {
-		if err := l.restore(ctx, vpa, name, l.container(vpa, name)); err != nil {
+		if err := l.restore(ctx, vpa, name, l.container(st, vpa, name)); err != nil {
 			return err
 		}
 	}
@@ -77,10 +100,10 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	if err != nil {
 		return errors.Join(usageErr, err)
 	}
-	ooms := l.detector(vpa).Scan(pods)
+	ooms := st.oom.Scan(pods)
 	var rec kube.Recommendation
 	for _, name := range target.Containers {
-		c := l.container(vpa, name)
+		c := l.container(st, vpa, name)
 		var readings []kube.MemoryUsage
 		for _, u := range usage {
 			if u.Container == name {
@@ -118,15 +141,28 @@ func (l *loop) names() []string {
 	return []string{l.name, l.ensembleName}
 }
 
+// state returns the state for one VPA, starting over when its targetRef has
+// changed since the models were built.
+func (l *loop) state(vpa *unstructured.Unstructured) *vpaState {
+	kind, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "kind")
+	name, _, _ := unstructured.NestedString(vpa.Object, "spec", "targetRef", "name")
+	target := kind + "/" + name
+	st, ok := l.vpas[vpa.GetUID()]
+	if !ok || st.target != target {
+		st = &vpaState{target: target, containers: make(map[string]*container), oom: kube.NewOOMDetector()}
+		l.vpas[vpa.GetUID()] = st
+	}
+	return st
+}
+
 // container returns the state for one container, starting over when the
 // VPA has switched between our recommender names since it was built.
-func (l *loop) container(vpa *unstructured.Unstructured, name string) *container {
-	key := fmt.Sprintf("%s/%s/%s", vpa.GetNamespace(), vpa.GetName(), name)
+func (l *loop) container(st *vpaState, vpa *unstructured.Unstructured, name string) *container {
 	selected, _ := kube.SelectedRecommender(vpa, l.names()...)
-	c, ok := l.containers[key]
+	c, ok := st.containers[name]
 	if !ok || c.name != selected {
 		c = &container{name: selected, windows: kube.NewAggregator(l.window), model: l.model(selected)}
-		l.containers[key] = c
+		st.containers[name] = c
 	}
 	return c
 }
@@ -196,16 +232,6 @@ func (l *loop) recordOOM(c *container, o kube.OOM) {
 		return
 	}
 	log.Printf("oom %s/%s at %s: recorded request %s", o.Pod, o.Container, o.Time.Format(time.TimeOnly), quantity(o.Request))
-}
-
-func (l *loop) detector(vpa *unstructured.Unstructured) *kube.OOMDetector {
-	key := vpa.GetNamespace() + "/" + vpa.GetName()
-	d, ok := l.oom[key]
-	if !ok {
-		d = kube.NewOOMDetector()
-		l.oom[key] = d
-	}
-	return d
 }
 
 func memory(bytes float64) corev1.ResourceList {

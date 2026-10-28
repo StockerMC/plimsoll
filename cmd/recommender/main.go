@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/StockerMC/plimsoll/internal/histogram"
 	"github.com/StockerMC/plimsoll/internal/kube"
 	"github.com/StockerMC/plimsoll/internal/recommender/ensemble"
@@ -78,8 +80,7 @@ func main() {
 			HourWindows:  *hourWindows,
 		},
 		checkpoints: *checkpoints,
-		containers:  make(map[string]*container),
-		oom:         make(map[string]*kube.OOMDetector),
+		vpas:        make(map[types.UID]*vpaState),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

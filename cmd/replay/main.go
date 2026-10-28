@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/StockerMC/plimsoll/internal/trace"
@@ -136,12 +136,26 @@ func readJSON(path string, v any) error {
 	return nil
 }
 
+// gitCommit is the revision the binary was built from, not the checkout's
+// HEAD at run time, with -dirty when the build had uncommitted changes.
 func gitCommit() string {
-	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
-	if err != nil {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
 		return "unknown"
 	}
-	return strings.TrimSpace(string(out))
+	rev, dirty := "unknown", false
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			rev = s.Value[:min(7, len(s.Value))]
+		case "vcs.modified":
+			dirty = s.Value == "true"
+		}
+	}
+	if dirty {
+		rev += "-dirty"
+	}
+	return rev
 }
 
 var errNotFound = errors.New("collection not found")

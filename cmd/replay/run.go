@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,8 @@ func (p *pass) execute(r *trace.Reader) error {
 	}
 	out := make(chan scored, 64)
 	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var workErr error
 	for range runtime.NumCPU() {
 		wg.Add(1)
 		go func() {
@@ -68,7 +71,9 @@ func (p *pass) execute(r *trace.Reader) error {
 				for i, r := range p.runs {
 					res, err := p.score(r, c)
 					if err != nil {
-						fmt.Fprintln(os.Stderr, err)
+						mu.Lock()
+						workErr = errors.Join(workErr, fmt.Errorf("collection %d, %s: %w", c.ID, r.Name, err))
+						mu.Unlock()
 						continue
 					}
 					out <- scored{i, res}
@@ -109,7 +114,7 @@ func (p *pass) execute(r *trace.Reader) error {
 		slices.SortFunc(rs, func(a, b result) int { return int(a.ID - b.ID) })
 	}
 	p.seconds = time.Since(start).Seconds()
-	return readErr
+	return errors.Join(readErr, workErr)
 }
 
 func (p *pass) score(r run, c trace.Collection) (result, error) {

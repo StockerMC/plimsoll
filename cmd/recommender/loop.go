@@ -71,13 +71,12 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 			return err
 		}
 	}
-	usage, err := kube.ListMemoryUsage(ctx, l.client, vpa.GetNamespace(), target.Selector)
-	if err != nil {
-		return err
-	}
+	// Pod status does not come from metrics-server, so OOMs are still seen
+	// and recommendations still published while usage cannot be read.
+	usage, usageErr := kube.ListMemoryUsage(ctx, l.client, vpa.GetNamespace(), target.Selector)
 	pods, err := kube.ListPods(ctx, l.client, vpa.GetNamespace(), target.Selector)
 	if err != nil {
-		return err
+		return errors.Join(usageErr, err)
 	}
 	ooms := l.detector(vpa).Scan(pods)
 	var rec kube.Recommendation
@@ -110,7 +109,7 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 			l.save(ctx, vpa, name, c)
 		}
 	}
-	return kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now()))
+	return errors.Join(usageErr, kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now())))
 }
 
 func (l *loop) names() []string {

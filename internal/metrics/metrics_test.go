@@ -77,9 +77,12 @@ func TestTrackLagsAndPostUpdateWindows(t *testing.T) {
 	}
 }
 
-func TestBootstrapOfConstantIsTheConstant(t *testing.T) {
-	lo, hi := Bootstrap([][]float64{{0.5, 0.5}, {0.5}}, 200, 1)
-	if lo != 0.5 || hi != 0.5 {
-		t.Errorf("CI [%v, %v], want [0.5, 0.5]", lo, hi)
+// Two groups with means 0 and 1 give resample means 0, 0.5 and 1 with
+// chances 1/4, 1/2 and 1/4, so the 2.5th and 97.5th percentiles are 0 and 1.
+// Swapped, collapsed or out-of-range indices fail.
+func TestBootstrapIntervalOfTwoGroups(t *testing.T) {
+	lo, hi := Bootstrap([][]float64{{0}, {1}}, 2000, 1)
+	if lo != 0 || hi != 1 {
+		t.Errorf("CI [%v, %v], want [0, 1]", lo, hi)
 	}
 }

@@ -1,6 +1,6 @@
 {
   "run_id": "cella-2026-10-28-assigned-updater",
-  "commit": "701a141",
+  "commit": "0661542",
   "cell": "a",
   "recommender": "assigned",
   "actuator": "updater",
@@ -25,24 +25,24 @@
   "windows_scored": 1695647,
   "instance_windows": 10147558,
   "skipped_rows": 5461,
-  "mean_relative_slack": 0.43711334768752025,
+  "mean_relative_slack": 0.43711661068434055,
   "median_relative_slack": 0.3410203244906239,
-  "memory_time": 55107195.659841225,
+  "memory_time": 55107219.36423608,
   "limit_changes_per_collection_day": 0.08444225398390011,
   "exceedance_windows_per_collection_day": 3.7029735501889274,
   "exceedance_free_collection_day_fraction": 0.9541646131099064,
-  "pass_seconds": 40.241499375,
+  "pass_seconds": 41.396235416,
   "pass_runs": 14,
-  "windows_per_second": 630593.3524873786,
+  "windows_per_second": 613003.1328933826,
   "tracking": {
     "fully_automated": {
       "collections": 107,
-      "updates": 7801,
+      "updates": 7802,
       "mean_abs_rel_error": {
-        "0": 0.2753785984774465,
-        "1": 0.27526230748972064,
-        "12": 0.2741266673279048,
-        "2": 0.27515502495691835
+        "0": 0.2756637395396972,
+        "1": 0.2755467281332373,
+        "12": 0.27440316343136933,
+        "2": 0.27543872518770296
       },
       "median_abs_rel_error": {
         "0": 0.08107656467184547,
@@ -51,22 +51,22 @@
         "2": 0.08103786466086271
       },
       "post_update_mean_abs_rel_error": {
-        "0": 0.3286346962742473,
-        "1": 0.3275280701321852,
-        "12": 0.30702811187105855,
-        "2": 0.3255826811299964
+        "0": 0.32881155346780766,
+        "1": 0.32769487503463346,
+        "12": 0.3069297111992469,
+        "2": 0.32572071087947907
       },
       "post_update_collections": 107,
-      "direction_agreement": 0.019092373931119296
+      "direction_agreement": 0.01909220397668408
     },
     "off": {
       "collections": 96,
       "updates": 9,
       "mean_abs_rel_error": {
-        "0": 0.005984467739918784,
-        "1": 0.0059843742106478635,
-        "12": 0.005983345388667737,
-        "2": 0.0059842806813769425
+        "0": 0.0035287792790868054,
+        "1": 0.0035284118771319235,
+        "12": 0.003528869938731151,
+        "2": 0.0035284535190954897
       },
       "median_abs_rel_error": {
         "0": 0,

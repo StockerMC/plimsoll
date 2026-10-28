@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -43,10 +44,10 @@ func TestAggregator(t *testing.T) {
 			},
 		},
 		{
-			name:   "a sample behind the open window counts towards it",
+			name:   "a sample from a closed window is dropped",
 			points: []point{{"a", 3, 5 * time.Minute}, {"b", 9, 4*time.Minute + 59*time.Second}, {"a", 1, 10 * time.Minute}},
 			want: []recommender.Sample{
-				{Time: t0.Add(5 * time.Minute), Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 3}, {Instance: "b", Peak: 9}}},
+				{Time: t0.Add(5 * time.Minute), Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 3}}},
 			},
 		},
 		{
@@ -81,5 +82,28 @@ func TestAggregator(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// metrics-server stamps each pod separately, so one pass can hold readings on
+// both sides of a window edge; the pod-list order must not move them.
+func TestAggregatorPassOrder(t *testing.T) {
+	t0 := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	pass := []MemoryUsage{
+		{Pod: "a", Bytes: 3, Time: t0.Add(5 * time.Minute)},
+		{Pod: "b", Bytes: 9, Time: t0.Add(4*time.Minute + 59*time.Second)},
+	}
+	reversed := []MemoryUsage{pass[1], pass[0]}
+	next := []MemoryUsage{{Pod: "a", Bytes: 1, Time: t0.Add(10 * time.Minute)}}
+	want := []recommender.Sample{
+		{Time: t0, Peaks: []recommender.InstancePeak{{Instance: "b", Peak: 9}}},
+		{Time: t0.Add(5 * time.Minute), Peaks: []recommender.InstancePeak{{Instance: "a", Peak: 3}}},
+	}
+	for _, first := range [][]MemoryUsage{pass, reversed} {
+		a := NewAggregator(5 * time.Minute)
+		got := append(a.AddAll(first), a.AddAll(next)...)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("pass %+v: got %+v, want %+v", first, got, want)
+		}
 	}
 }

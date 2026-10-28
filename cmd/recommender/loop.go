@@ -83,13 +83,14 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	var rec kube.Recommendation
 	for _, name := range target.Containers {
 		c := l.container(vpa, name)
+		var readings []kube.MemoryUsage
 		for _, u := range usage {
-			if u.Container != name {
-				continue
+			if u.Container == name {
+				readings = append(readings, u)
 			}
-			if s, ok := c.windows.Add(u.Pod, u.Bytes, u.Time); ok {
-				c.model.Observe(s)
-			}
+		}
+		for _, s := range c.windows.AddAll(readings) {
+			c.model.Observe(s)
 		}
 		for _, o := range ooms {
 			if o.Container == name {

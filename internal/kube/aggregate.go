@@ -21,11 +21,28 @@ func NewAggregator(interval time.Duration) *Aggregator {
 	return &Aggregator{interval: interval, peaks: make(map[string]float64)}
 }
 
+// AddAll records one pass's readings in time order, so the windows do not
+// depend on the order the pods were listed in, and returns the windows closed.
+func (a *Aggregator) AddAll(readings []MemoryUsage) []recommender.Sample {
+	sorted := slices.Clone(readings)
+	slices.SortStableFunc(sorted, func(x, y MemoryUsage) int { return x.Time.Compare(y.Time) })
+	var closed []recommender.Sample
+	for _, r := range sorted {
+		if s, ok := a.Add(r.Pod, r.Bytes, r.Time); ok {
+			closed = append(closed, s)
+		}
+	}
+	return closed
+}
+
 // Add records one point sample. When at falls in a later window than the
-// open one, the open window is closed and returned. An older sample counts
-// towards the open window.
+// open one, the open window is closed and returned. A sample from a window
+// already closed is dropped, as upstream's addMemorySample drops it.
 func (a *Aggregator) Add(pod string, bytes float64, at time.Time) (recommender.Sample, bool) {
 	start := at.Truncate(a.interval)
+	if start.Before(a.start) {
+		return recommender.Sample{}, false
+	}
 	var closed recommender.Sample
 	ok := false
 	if start.After(a.start) {

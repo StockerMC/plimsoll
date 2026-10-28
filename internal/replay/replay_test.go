@@ -66,6 +66,22 @@ func TestRequestFollowsEventTimes(t *testing.T) {
 	}
 }
 
+// The assigned run under Every scores each row against its own
+// assigned_memory: instance 0 runs over its limit of 1 and instance 1 under
+// its limit of 3, though the window's mean limit of 2 says the opposite.
+func TestAssignedExceedanceIsPerRow(t *testing.T) {
+	c := trace.Collection{ID: 1}
+	end := t0.Add(trace.WindowLength)
+	c.Windows = []trace.Window{
+		{Start: t0, End: end, Instance: 0, AvgMem: 1, MaxMem: 1.5, Assigned: 1},
+		{Start: t0, End: end, Instance: 1, AvgMem: 1, MaxMem: 2.5, Assigned: 3},
+	}
+	p := Run(c, nil, Every).Points[0]
+	if p.Limit != 2 || !p.Usage[0].Exceeded || p.Usage[1].Exceeded {
+		t.Errorf("limit %v, exceeded %v and %v, want 2, true and false", p.Limit, p.Usage[0].Exceeded, p.Usage[1].Exceeded)
+	}
+}
+
 func TestUpdaterRule(t *testing.T) {
 	tests := []struct {
 		name                 string

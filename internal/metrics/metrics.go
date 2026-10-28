@@ -12,6 +12,8 @@ type Usage struct {
 	Avg      float64
 	Max      float64
 	Seconds  float64
+	// The peak was above the limit the instance ran with.
+	Exceeded bool
 }
 
 // Point is one window: the limit in force for it, the request the trace had
@@ -72,7 +74,7 @@ func Summarize(s Series) Summary {
 			d.avgs = append(d.avgs, u.Avg)
 			out.InstanceWindows++
 			out.MemoryTime += p.Limit * u.Seconds
-			if u.Max > p.Limit {
+			if u.Exceeded {
 				out.Exceedances++
 				d.exceeded = true
 			}

@@ -148,7 +148,7 @@ func writeRaw(path string, s metrics.Series) error {
 		for _, u := range p.Usage {
 			avgs = append(avgs, u.Avg)
 			peak = max(peak, u.Max)
-			if u.Max > p.Limit {
+			if u.Exceeded {
 				exceeded++
 			}
 		}

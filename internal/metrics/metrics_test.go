@@ -20,9 +20,9 @@ func points(limits []float64) []Point {
 // 6 x 10 x 300.
 func TestSummarizeScoresOneDay(t *testing.T) {
 	s := Series{Points: []Point{
-		{Limit: 10, Usage: []Usage{{0, 2, 3, 300}, {1, 4, 11, 300}}},
-		{Limit: 10, Usage: []Usage{{0, 6, 9, 300}, {1, 8, 10, 300}}},
-		{Limit: 10, Usage: []Usage{{0, 5, 12, 300}, {1, 7, 5, 300}}},
+		{Limit: 10, Usage: []Usage{{0, 2, 3, 300, false}, {1, 4, 11, 300, true}}},
+		{Limit: 10, Usage: []Usage{{0, 6, 9, 300, false}, {1, 8, 10, 300, false}}},
+		{Limit: 10, Usage: []Usage{{0, 5, 12, 300, true}, {1, 7, 5, 300, false}}},
 	}}
 	got := Summarize(s)
 	want := Summary{Days: 1, Windows: 3, InstanceWindows: 6, MeanSlack: 0.2, MemoryTime: 18000, Exceedances: 2}

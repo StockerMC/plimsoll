@@ -29,6 +29,7 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 	}
 	act := newAct(steps[0].Assigned, steps[0].Time)
 	req := requests{current: make(map[int]float64), changes: c.Requests, updates: c.Updates}
+	_, own := act.(every)
 	s.From = len(steps)
 	for i, step := range steps {
 		if s.From == len(steps) && step.Time.Sub(steps[0].Time) >= ColdStart {
@@ -41,7 +42,13 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 		p := metrics.Point{Time: step.Time, Day: step.Day, Limit: act.Limit(r, step.Time)}
 		p.Request, p.Updated = req.through(step.Time.Add(trace.WindowLength))
 		for _, u := range step.Usage {
-			p.Usage = append(p.Usage, metrics.Usage{Instance: u.Instance, Avg: u.Avg, Max: u.Max, Seconds: u.Seconds})
+			// Under Every the assigned run's limit is each row's own
+			// assigned_memory, which the window's mean would blur.
+			exceeded := u.Max > p.Limit
+			if rec == nil && own {
+				exceeded = u.OverAssigned
+			}
+			p.Usage = append(p.Usage, metrics.Usage{Instance: u.Instance, Avg: u.Avg, Max: u.Max, Seconds: u.Seconds, Exceeded: exceeded})
 		}
 		s.Points = append(s.Points, p)
 		if rec != nil {

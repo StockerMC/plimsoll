@@ -23,6 +23,8 @@ type Usage struct {
 	Avg      float64 // duration-weighted mean of the rows' averages
 	Max      float64
 	Seconds  float64
+	// A row's max_mem was above that row's own assigned_memory.
+	OverAssigned bool
 }
 
 // Step is one five-minute window: the sample a recommender observes and the
@@ -32,8 +34,10 @@ type Step struct {
 	Day    int
 	Sample recommender.Sample
 	Usage  []Usage
-	// Mean of the rows' assigned_memory, the limit the trace ran with.
-	Assigned float64
+	// Duration-weighted mean of the rows' assigned_memory, the limit the
+	// trace ran with; rows without one are left out.
+	Assigned        float64
+	assignedSeconds float64
 }
 
 // Steps buckets the collection's rows into five-minute windows with one peak
@@ -53,17 +57,15 @@ func Steps(c Collection) []Step {
 	steps := make([]Step, 0, len(byWindow))
 	for _, k := range slices.Sorted(maps.Keys(byWindow)) {
 		s := byWindow[k]
-		total := 0.0
 		for i := range s.Usage {
 			u := &s.Usage[i]
 			if u.Seconds > 0 {
 				u.Avg /= u.Seconds
 			}
 			s.Sample.Peaks = append(s.Sample.Peaks, recommender.InstancePeak{Instance: strconv.Itoa(u.Instance), Peak: u.Max})
-			total += u.Seconds
 		}
-		if total > 0 {
-			s.Assigned /= total
+		if s.assignedSeconds > 0 {
+			s.Assigned /= s.assignedSeconds
 		}
 		s.Sample.Time = s.Time
 		steps = append(steps, *s)
@@ -87,7 +89,11 @@ func (s *Step) add(w Window) {
 	u.Avg += w.AvgMem * seconds
 	u.Max = math.Max(u.Max, w.MaxMem)
 	u.Seconds += seconds
-	s.Assigned += w.Assigned * seconds
+	if w.Assigned > 0 {
+		u.OverAssigned = u.OverAssigned || w.MaxMem > w.Assigned
+		s.Assigned += w.Assigned * seconds
+		s.assignedSeconds += seconds
+	}
 }
 
 // Day is the trace day of t, counted from the trace start.

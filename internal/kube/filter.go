@@ -10,24 +10,28 @@ import (
 // empty spec.recommenders belong to it and to nobody else.
 const DefaultRecommenderName = "default"
 
-// FilterVPAs keeps the VPAs that the named recommender handles, following
-// filterVPAs in upstream pkg/recommender/input/cluster_feeder.go.
-func FilterVPAs(vpas []unstructured.Unstructured, recommender string) []unstructured.Unstructured {
+// FilterVPAs keeps the VPAs that any of the named recommenders handles,
+// following filterVPAs in upstream pkg/recommender/input/cluster_feeder.go.
+func FilterVPAs(vpas []unstructured.Unstructured, recommenders ...string) []unstructured.Unstructured {
 	var handled []unstructured.Unstructured
 	for _, vpa := range vpas {
-		if selectsRecommender(&vpa, recommender) {
+		if _, ok := SelectedRecommender(&vpa, recommenders...); ok {
 			handled = append(handled, vpa)
 		}
 	}
 	return handled
 }
 
-func selectsRecommender(vpa *unstructured.Unstructured, recommender string) bool {
+// SelectedRecommender returns the first of the named recommenders that the
+// VPA selects.
+func SelectedRecommender(vpa *unstructured.Unstructured, recommenders ...string) (string, bool) {
 	names := recommenderNames(vpa)
-	if len(names) == 0 {
-		return recommender == DefaultRecommenderName
+	for _, r := range recommenders {
+		if len(names) == 0 && r == DefaultRecommenderName || slices.Contains(names, r) {
+			return r, true
+		}
 	}
-	return slices.Contains(names, recommender)
+	return "", false
 }
 
 func recommenderNames(vpa *unstructured.Unstructured) []string {

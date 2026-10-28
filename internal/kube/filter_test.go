@@ -22,27 +22,36 @@ func newVPA(namespace, name string, recommenders ...string) unstructured.Unstruc
 	}}
 }
 
-func TestFilterVPAs(t *testing.T) {
+func TestSelectedRecommender(t *testing.T) {
 	tests := []struct {
 		name         string
-		recommender  string
+		ours         []string
 		recommenders []string
-		handled      bool
+		want         string
 	}{
-		{"names us", "plimsoll", []string{"plimsoll"}, true},
-		{"empty list", "plimsoll", nil, false},
-		{"names default", "plimsoll", []string{"default"}, false},
-		{"names someone else", "plimsoll", []string{"performance"}, false},
-		{"default handles empty list", "default", nil, true},
-		{"default handles its name", "default", []string{"default"}, true},
-		{"default ignores other names", "default", []string{"plimsoll"}, false},
+		{"names us", []string{"plimsoll"}, []string{"plimsoll"}, "plimsoll"},
+		{"empty list", []string{"plimsoll"}, nil, ""},
+		{"names default", []string{"plimsoll"}, []string{"default"}, ""},
+		{"names someone else", []string{"plimsoll"}, []string{"performance"}, ""},
+		{"default handles empty list", []string{"default"}, nil, "default"},
+		{"default handles its name", []string{"default"}, []string{"default"}, "default"},
+		{"default ignores other names", []string{"default"}, []string{"plimsoll"}, ""},
+		{"second name", []string{"plimsoll", "plimsoll-ensemble"}, []string{"plimsoll-ensemble"}, "plimsoll-ensemble"},
+		{"both names picks the first of ours", []string{"plimsoll", "plimsoll-ensemble"}, []string{"plimsoll-ensemble", "plimsoll"}, "plimsoll"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vpas := []unstructured.Unstructured{newVPA("default", "demo", tt.recommenders...)}
-			got := FilterVPAs(vpas, tt.recommender)
-			if handled := len(got) == 1; handled != tt.handled {
-				t.Errorf("recommender %q with recommenders %v: handled %v, want %v", tt.recommender, tt.recommenders, handled, tt.handled)
+			vpa := newVPA("default", "demo", tt.recommenders...)
+			got, ok := SelectedRecommender(&vpa, tt.ours...)
+			if got != tt.want || ok != (tt.want != "") {
+				t.Errorf("ours %v with recommenders %v: got %q %v, want %q", tt.ours, tt.recommenders, got, ok, tt.want)
+			}
+			kept := 0
+			if tt.want != "" {
+				kept = 1
+			}
+			if got := len(FilterVPAs([]unstructured.Unstructured{vpa}, tt.ours...)); got != kept {
+				t.Errorf("FilterVPAs kept %d, want %d", got, kept)
 			}
 		})
 	}

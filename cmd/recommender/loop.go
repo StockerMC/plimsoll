@@ -17,18 +17,21 @@ import (
 
 	"github.com/StockerMC/plimsoll/internal/kube"
 	"github.com/StockerMC/plimsoll/internal/recommender"
+	"github.com/StockerMC/plimsoll/internal/recommender/ensemble"
 	"github.com/StockerMC/plimsoll/internal/recommender/percentile"
 )
 
 type loop struct {
-	client      dynamic.Interface
-	name        string
-	namespace   string
-	window      time.Duration
-	opts        percentile.Options
-	checkpoints bool
-	containers  map[string]*container
-	oom         map[string]*kube.OOMDetector
+	client       dynamic.Interface
+	name         string
+	ensembleName string
+	namespace    string
+	window       time.Duration
+	opts         percentile.Options
+	ensembleOpts ensemble.Options
+	checkpoints  bool
+	containers   map[string]*container
+	oom          map[string]*kube.OOMDetector
 }
 
 // container is the state kept for one container of one VPA between passes.
@@ -42,7 +45,7 @@ type container struct {
 }
 
 func (l *loop) runOnce(ctx context.Context) error {
-	vpas, err := kube.ListVPAs(ctx, l.client, l.namespace, l.name)
+	vpas, err := kube.ListVPAs(ctx, l.client, l.namespace, l.names()...)
 	if err != nil {
 		return err
 	}
@@ -107,14 +110,28 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 	return kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now()))
 }
 
+func (l *loop) names() []string {
+	if l.ensembleName == "" {
+		return []string{l.name}
+	}
+	return []string{l.name, l.ensembleName}
+}
+
 func (l *loop) container(vpa *unstructured.Unstructured, name string) *container {
 	key := fmt.Sprintf("%s/%s/%s", vpa.GetNamespace(), vpa.GetName(), name)
 	c, ok := l.containers[key]
 	if !ok {
-		c = &container{windows: kube.NewAggregator(l.window), model: percentile.New(l.opts)}
+		c = &container{windows: kube.NewAggregator(l.window), model: l.model(vpa)}
 		l.containers[key] = c
 	}
 	return c
+}
+
+func (l *loop) model(vpa *unstructured.Unstructured) recommender.Recommender {
+	if selected, _ := kube.SelectedRecommender(vpa, l.names()...); selected == l.ensembleName {
+		return ensemble.New(l.ensembleOpts)
+	}
+	return percentile.New(l.opts)
 }
 
 func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name string, c *container) error {

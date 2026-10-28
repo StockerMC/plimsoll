@@ -10,12 +10,14 @@ import (
 
 	"github.com/StockerMC/plimsoll/internal/histogram"
 	"github.com/StockerMC/plimsoll/internal/kube"
+	"github.com/StockerMC/plimsoll/internal/recommender/ensemble"
 	"github.com/StockerMC/plimsoll/internal/recommender/percentile"
 )
 
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig; in-cluster config when empty")
 	name := flag.String("recommender-name", "plimsoll", "handle VPAs whose spec.recommenders names this")
+	ensembleName := flag.String("ensemble-recommender-name", "plimsoll-ensemble", "serve the ensemble to VPAs naming this; empty disables it")
 	namespace := flag.String("vpa-object-namespace", "", "only handle VPAs in this namespace; all namespaces when empty")
 	interval := flag.Duration("recommender-interval", time.Minute, "time between passes")
 	window := flag.Duration("memory-window", 5*time.Minute, "window over which each pod's samples are reduced to one peak")
@@ -36,16 +38,23 @@ func main() {
 		log.Fatal(err)
 	}
 	l := &loop{
-		client:    client,
-		name:      *name,
-		namespace: *namespace,
-		window:    *window,
+		client:       client,
+		name:         *name,
+		ensembleName: *ensembleName,
+		namespace:    *namespace,
+		window:       *window,
 		opts: percentile.Options{
 			Buckets:             buckets,
 			SamplesPerDay:       float64(24 * time.Hour / *window),
 			MinMemory:           *minMemoryMB * 1024 * 1024,
 			AggregationInterval: *aggregation,
 			HalfLife:            *halfLife,
+		},
+		ensembleOpts: ensemble.Options{
+			Buckets:    buckets,
+			MinMemory:  *minMemoryMB * 1024 * 1024,
+			LargeLimit: 1 << 30,
+			OOMMinBump: 100 << 20,
 		},
 		checkpoints: *checkpoints,
 		containers:  make(map[string]*container),

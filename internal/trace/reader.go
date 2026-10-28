@@ -30,17 +30,18 @@ type Update struct {
 	ReqMem   float64
 }
 
-// Collection is one sampled job: its usage rows, the request each instance
-// had at the trace start, and its request updates, all in time order.
+// Collection is one sampled job: its usage rows, the changes of each
+// instance's request, and its request updates, all in time order.
 type Collection struct {
 	ID              int64
 	VerticalScaling int
 	User            string
 	LogicalName     string
 	Windows         []Window
-	// Memory request per instance from its last event at the trace start.
-	Requests map[int]float64
-	Updates  []Update
+	// Every change of an instance's memory request, from its first event.
+	Requests []Update
+	// The changes made by request update events.
+	Updates []Update
 	// Rows dropped for a missing or zero max_mem.
 	Skipped int
 }

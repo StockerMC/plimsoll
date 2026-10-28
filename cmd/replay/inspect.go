@@ -47,12 +47,14 @@ func inspectCollection(r *trace.Reader, id int64) error {
 		if len(steps) > 0 {
 			fmt.Printf("windows from %d to %d us, trace days %d to %d\n", steps[0].Time.UnixMicro(), steps[len(steps)-1].Time.UnixMicro(), steps[0].Day, steps[len(steps)-1].Day)
 		}
-		for i, u := range c.Updates {
-			if i == 3 {
-				break
+		was := make(map[int]float64)
+		j := 0
+		for _, u := range c.Updates[:min(3, len(c.Updates))] {
+			for ; j < len(c.Requests) && c.Requests[j].Time.Before(u.Time); j++ {
+				was[c.Requests[j].Instance] = c.Requests[j].ReqMem
 			}
-			fmt.Printf("update at %d us: instance %d request %g (was %g)\n", u.Time.UnixMicro(), u.Instance, u.ReqMem, c.Requests[u.Instance])
-			c.Requests[u.Instance] = u.ReqMem
+			fmt.Printf("update at %d us: instance %d request %g (was %g)\n", u.Time.UnixMicro(), u.Instance, u.ReqMem, was[u.Instance])
+			was[u.Instance] = u.ReqMem
 		}
 		return nil
 	}

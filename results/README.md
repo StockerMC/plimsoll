@@ -20,7 +20,7 @@ Windows are the trace's five-minute windows; one peak per instance per window fr
 - Limit-exceedance windows (simulated OOM proxy): instance-windows whose peak is above the limit, per collection-day. Never an OOM: the replay is open loop.
 - Limit changes per collection-day: windows whose limit differs from the previous window's.
 - `memory_time`: sum over scored instance-windows of limit times seconds.
-- Tracking: mean over windows of |limit - request| / request, where the request is the mean over instances of `resource_request.memory` rebuilt from `instance_events`, at lags 0, 1, 2 and 12 windows; the same over the 12 windows after each recorded update; and the fraction of updates after which the limit moved the same way within 12 windows. Reported for the FULLY_AUTOMATED and the OFF group.
+- Tracking: mean over windows of |limit - request| / request, where the request is the mean, over the instances whose first event has passed, of `resource_request.memory` rebuilt from every `instance_events` row that changes it, at lags 0, 1, 2 and 12 windows; the same over the 12 windows after each recorded update; and the fraction of updates after which the limit moved the same way within 12 windows. Reported for the FULLY_AUTOMATED and the OFF group.
 - Comparison: paired difference in mean slack with a bootstrap 95% CI over groups (user and logical name), 2000 resamples, seed 1; win fraction is the share of collections where the candidate's slack is lower and its exceedance per day not higher.
 
 ## Tune and report split

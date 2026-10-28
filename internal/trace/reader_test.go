@@ -3,6 +3,7 @@ package trace
 import (
 	"io"
 	"math"
+	"slices"
 	"testing"
 	"time"
 )
@@ -58,8 +59,14 @@ func TestFixtures(t *testing.T) {
 				c.ID, c.VerticalScaling, len(steps), c.Skipped, len(c.Updates), tt.verticalScaling, tt.windows, tt.skipped, tt.updates)
 		}
 		for i := range 2 {
-			if c.Requests[i] != tt.request {
-				t.Errorf("%d: instance %d starts at request %v, want %v", c.ID, i, c.Requests[i], tt.request)
+			start := 0.0
+			for _, u := range c.Requests {
+				if u.Instance == i && u.Time.Equal(Time(0)) {
+					start = u.ReqMem
+				}
+			}
+			if start != tt.request {
+				t.Errorf("%d: instance %d starts at request %v, want %v", c.ID, i, start, tt.request)
 			}
 		}
 		if len(c.Updates) > 0 && !c.Updates[0].Time.Equal(tt.firstUpdate) {
@@ -99,5 +106,26 @@ func TestShortRowsMergeIntoOneInstanceWindow(t *testing.T) {
 	}
 	if step.Sample.Peaks[1].Instance != "1" || step.Sample.Peaks[1].Peak != u.Max {
 		t.Errorf("peak %+v, want instance 1 at %v", step.Sample.Peaks[1], u.Max)
+	}
+}
+
+// Instance 1 first appears an hour in, and its request changes on a
+// SCHEDULE, which is a request change but not a request update.
+func TestDiffKeepsRequestChangesOfAnyEvent(t *testing.T) {
+	rows := [][]string{
+		{"1", "0", "0", "0", "1"},
+		{"1", "1", "3600000000", "3", "3"},
+		{"1", "1", "7200000000", "3", "4"},
+		{"1", "1", "7200000000", "6", "4"},
+		{"1", "1", "9000000000", "10", "5"},
+		{"1", "0", "9000000000", "10", ""},
+	}
+	requests, updates := diff(rows)
+	want := []Update{{Time(0), 0, 1}, {Time(3600000000), 1, 3}, {Time(7200000000), 1, 4}, {Time(9000000000), 1, 5}}
+	if !slices.Equal(requests, want) {
+		t.Errorf("requests %v, want %v", requests, want)
+	}
+	if !slices.Equal(updates, want[3:]) {
+		t.Errorf("updates %v, want %v", updates, want[3:])
 	}
 }

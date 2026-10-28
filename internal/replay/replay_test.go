@@ -12,7 +12,7 @@ var t0 = trace.Time(600_000_000)
 
 // collection is one instance over n full windows from the trace start.
 func collection(n int) trace.Collection {
-	c := trace.Collection{ID: 1, Requests: map[int]float64{0: 1}}
+	c := trace.Collection{ID: 1, Requests: []trace.Update{{Time: trace.Time(0), Instance: 0, ReqMem: 1}}}
 	for i := range n {
 		start := t0.Add(time.Duration(i) * trace.WindowLength)
 		c.Windows = append(c.Windows, trace.Window{Start: start, End: start.Add(trace.WindowLength), AvgMem: 0.5, MaxMem: 1, Assigned: 2})
@@ -52,6 +52,17 @@ func TestRunLeavesTheCollectionUnchanged(t *testing.T) {
 	second := Run(c, nil, Every)
 	if first.Points[0].Request != 1 || second.Points[0].Request != 1 {
 		t.Errorf("request before the update: %v then %v, want 1 both times", first.Points[0].Request, second.Points[0].Request)
+	}
+}
+
+// An instance that first appears an hour in must not count toward the
+// request before then.
+func TestRequestFollowsEventTimes(t *testing.T) {
+	c := collection(24)
+	c.Requests = append(c.Requests, trace.Update{Time: t0.Add(time.Hour), Instance: 1, ReqMem: 3})
+	s := Run(c, nil, Every)
+	if s.Points[11].Request != 1 || s.Points[12].Request != 2 || s.Points[12].Updated {
+		t.Errorf("request %v then %v (updated %v), want 1 then 2, not an update", s.Points[11].Request, s.Points[12].Request, s.Points[12].Updated)
 	}
 }
 

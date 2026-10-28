@@ -18,16 +18,19 @@ type event struct {
 	reqMem   float64
 }
 
-// diff recovers each instance's starting request and the UPDATE_PENDING and
-// UPDATE_RUNNING events that changed it. Any other event, including a
-// restart under the same index, never counts as an update.
-func diff(rows [][]string) (map[int]float64, []Update) {
+// diff recovers every change of each instance's request, from its first
+// event on, and the subset made by UPDATE_PENDING and UPDATE_RUNNING events.
+// A restart under the same index with an unchanged request is no change.
+func diff(rows [][]string) (requests, updates []Update) {
 	events := make([]event, 0, len(rows))
 	for _, f := range rows {
+		req, err := strconv.ParseFloat(f[4], 64)
+		if err != nil {
+			continue
+		}
 		instance, _ := strconv.Atoi(f[1])
 		t, _ := strconv.ParseInt(f[2], 10, 64)
 		typ, _ := strconv.Atoi(f[3])
-		req, _ := strconv.ParseFloat(f[4], 64)
 		events = append(events, event{instance, t, typ, req})
 	}
 	// Events at one time are ordered by type, so a SCHEDULE at the trace
@@ -35,18 +38,21 @@ func diff(rows [][]string) (map[int]float64, []Update) {
 	slices.SortFunc(events, func(a, b event) int {
 		return cmp.Or(cmp.Compare(a.instance, b.instance), cmp.Compare(a.time, b.time), cmp.Compare(a.typ, b.typ))
 	})
-	requests := make(map[int]float64)
 	last := make(map[int]float64)
-	var updates []Update
 	for _, e := range events {
 		prev, seen := last[e.instance]
-		if !seen || e.time == 0 {
-			requests[e.instance] = e.reqMem
-		} else if (e.typ == updatePending || e.typ == updateRunning) && e.reqMem != prev {
-			updates = append(updates, Update{Time: Time(e.time), Instance: e.instance, ReqMem: e.reqMem})
-		}
 		last[e.instance] = e.reqMem
+		if seen && e.reqMem == prev {
+			continue
+		}
+		u := Update{Time: Time(e.time), Instance: e.instance, ReqMem: e.reqMem}
+		requests = append(requests, u)
+		if seen && e.time != 0 && (e.typ == updatePending || e.typ == updateRunning) {
+			updates = append(updates, u)
+		}
 	}
-	slices.SortStableFunc(updates, func(a, b Update) int { return a.Time.Compare(b.Time) })
+	byTime := func(a, b Update) int { return a.Time.Compare(b.Time) }
+	slices.SortStableFunc(requests, byTime)
+	slices.SortStableFunc(updates, byTime)
 	return requests, updates
 }

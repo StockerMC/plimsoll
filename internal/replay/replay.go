@@ -1,7 +1,6 @@
 package replay
 
 import (
-	"maps"
 	"time"
 
 	"github.com/StockerMC/plimsoll/internal/metrics"
@@ -29,7 +28,7 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 		rec = newRec()
 	}
 	act := newAct(steps[0].Assigned, steps[0].Time)
-	req := requests{current: maps.Clone(c.Requests), updates: c.Updates}
+	req := requests{current: make(map[int]float64), changes: c.Requests, updates: c.Updates}
 	s.From = len(steps)
 	for i, step := range steps {
 		if s.From == len(steps) && step.Time.Sub(steps[0].Time) >= ColdStart {
@@ -52,18 +51,21 @@ func Run(c trace.Collection, newRec func() recommender.Recommender, newAct NewAc
 	return s
 }
 
-// requests replays the trace's request updates as a step function.
+// requests replays the trace's request changes as a step function.
 type requests struct {
-	current map[int]float64
-	updates []trace.Update
+	current          map[int]float64
+	changes, updates []trace.Update
 }
 
-// through applies the updates before end and returns the mean request over
-// the instances and whether any update was applied.
+// through applies the changes before end and returns the mean request over
+// the instances seen so far and whether a request update fell before end.
 func (r *requests) through(end time.Time) (float64, bool) {
+	for len(r.changes) > 0 && r.changes[0].Time.Before(end) {
+		r.current[r.changes[0].Instance] = r.changes[0].ReqMem
+		r.changes = r.changes[1:]
+	}
 	updated := false
 	for len(r.updates) > 0 && r.updates[0].Time.Before(end) {
-		r.current[r.updates[0].Instance] = r.updates[0].ReqMem
 		r.updates = r.updates[1:]
 		updated = true
 	}

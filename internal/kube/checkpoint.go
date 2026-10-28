@@ -3,6 +3,7 @@ package kube
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -35,9 +36,23 @@ type histogramCheckpoint struct {
 	TotalWeight        float64        `json:"totalWeight"`
 }
 
-// checkpointName is upstream's naming, <vpa>-<container>.
+// ErrUnusableCheckpoint means a checkpoint exists but cannot be restored: it
+// belongs to another VPA or container, or its status does not decode.
+var ErrUnusableCheckpoint = errors.New("unusable checkpoint")
+
+// checkpointName is upstream's naming, <vpa>-<container>. foo/bar-baz and
+// foo-bar/baz share a name, so reads and writes check the spec.
 func checkpointName(vpa, container string) string {
 	return vpa + "-" + container
+}
+
+func checkOwner(obj *unstructured.Unstructured, vpa, container string) error {
+	v, _, _ := unstructured.NestedString(obj.Object, "spec", "vpaObjectName")
+	c, _, _ := unstructured.NestedString(obj.Object, "spec", "containerName")
+	if v != vpa || c != container {
+		return fmt.Errorf("%w: %s/%s belongs to %s/%s", ErrUnusableCheckpoint, obj.GetNamespace(), obj.GetName(), v, c)
+	}
+	return nil
 }
 
 // GetCheckpoint reads the checkpoint of one container of a VPA. It returns
@@ -51,13 +66,16 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	if err != nil {
 		return recommender.Checkpoint{}, false, fmt.Errorf("get checkpoint %s/%s: %w", namespace, name, err)
 	}
+	if err := checkOwner(obj, vpa, container); err != nil {
+		return recommender.Checkpoint{}, false, err
+	}
 	raw, err := json.Marshal(obj.Object["status"])
 	if err != nil {
-		return recommender.Checkpoint{}, false, fmt.Errorf("checkpoint %s/%s: %w", namespace, name, err)
+		return recommender.Checkpoint{}, false, fmt.Errorf("%w: %s/%s: %v", ErrUnusableCheckpoint, namespace, name, err)
 	}
 	var s checkpointStatus
 	if err := json.Unmarshal(raw, &s); err != nil {
-		return recommender.Checkpoint{}, false, fmt.Errorf("checkpoint %s/%s status: %w", namespace, name, err)
+		return recommender.Checkpoint{}, false, fmt.Errorf("%w: %s/%s status: %v", ErrUnusableCheckpoint, namespace, name, err)
 	}
 	return recommender.Checkpoint{
 		Version: s.Version,
@@ -73,7 +91,8 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 }
 
 // PutCheckpoint creates or replaces the checkpoint of one container of a VPA.
-// The CRD has no status subresource, so the whole object is updated.
+// The CRD has no status subresource, so the whole object is updated. It
+// refuses to overwrite a checkpoint of another VPA or container.
 func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa, container string, c recommender.Checkpoint, now time.Time) error {
 	status, err := toMap(checkpointStatus{
 		LastUpdateTime: metav1.NewTime(now),
@@ -116,6 +135,9 @@ func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, nam
 		return err
 	}
 	if err != nil {
+		return err
+	}
+	if err := checkOwner(obj, vpa, container); err != nil {
 		return err
 	}
 	obj.Object["status"] = status

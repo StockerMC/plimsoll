@@ -24,6 +24,8 @@ func main() {
 	aggregation := flag.Duration("memory-aggregation-interval", 24*time.Hour, "window over which each pod keeps one peak in the histogram")
 	halfLife := flag.Duration("memory-histogram-decay-half-life", 24*time.Hour, "half-life of the histogram's decay")
 	minMemoryMB := flag.Float64("pod-recommendation-min-memory-mb", 250, "floor on every memory recommendation")
+	fallFraction := flag.Float64("ensemble-fall-fraction", 0.1, "fraction the ensemble's hourly max must fall by before the recommendation follows it")
+	fallWindows := flag.Int("ensemble-fall-windows", 0, "memory windows in a row the fall must last; 0 follows every fall at once")
 	checkpoints := flag.Bool("checkpoints", true, "restore from and save to VerticalPodAutoscalerCheckpoint objects")
 	once := flag.Bool("once", false, "run one pass and exit")
 	flag.Parse()
@@ -51,10 +53,12 @@ func main() {
 			HalfLife:            *halfLife,
 		},
 		ensembleOpts: ensemble.Options{
-			Buckets:    buckets,
-			MinMemory:  *minMemoryMB * 1024 * 1024,
-			LargeLimit: 1 << 30,
-			OOMMinBump: 100 << 20,
+			Buckets:      buckets,
+			MinMemory:    *minMemoryMB * 1024 * 1024,
+			LargeLimit:   1 << 30,
+			OOMMinBump:   100 << 20,
+			FallFraction: *fallFraction,
+			FallWindows:  *fallWindows,
 		},
 		checkpoints: *checkpoints,
 		containers:  make(map[string]*container),

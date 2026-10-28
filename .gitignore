@@ -14,3 +14,6 @@ bin/
 *.json.key
 service-account*.json
 .env
+
+# Python venv for tools/bq
+.venv/

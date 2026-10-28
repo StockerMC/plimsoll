@@ -1,0 +1,21 @@
+{
+  "candidate": "cella-2026-10-28-ml-every",
+  "baseline": "cella-2026-10-28-percentile-tuned-every",
+  "actuator": "every",
+  "split": "report",
+  "collections": 203,
+  "groups": 195,
+  "slack_difference": -0.14421416080827093,
+  "slack_ci_low": -0.15740469822628914,
+  "slack_ci_high": -0.13062718038210264,
+  "candidate_slack": 0.14025546190059598,
+  "baseline_slack": 0.2844696227088671,
+  "memory_time_change": -0.03722153768058434,
+  "exceedance_ratio": 27.124083769633508,
+  "changes_ratio": 3.674252565818831,
+  "candidate_exceedance_per_day": 8.511089206505668,
+  "baseline_exceedance_per_day": 0.31378347297519305,
+  "candidate_changes_per_day": 1.3527189091506489,
+  "baseline_changes_per_day": 0.3681616559881715,
+  "win_fraction": 0.014778325123152709
+}

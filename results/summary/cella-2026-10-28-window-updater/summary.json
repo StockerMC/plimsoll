@@ -1,0 +1,87 @@
+{
+  "run_id": "cella-2026-10-28-window-updater",
+  "commit": "701a141",
+  "cell": "a",
+  "recommender": "window",
+  "actuator": "updater",
+  "split": "report",
+  "params": {
+    "percentile": {
+      "target_percentile": 0.95,
+      "half_life_hours": 48,
+      "margin": 0.1
+    },
+    "ml": {
+      "decay": 0.2,
+      "overrun": 5,
+      "underrun": 1,
+      "limit_change": 0.1,
+      "model_change": 0.1
+    }
+  },
+  "collections": 203,
+  "groups": 195,
+  "collection_days": 6087,
+  "windows_scored": 1695647,
+  "instance_windows": 10147558,
+  "skipped_rows": 5461,
+  "mean_relative_slack": 0.24826804370808217,
+  "median_relative_slack": 0.22031096065938766,
+  "memory_time": 43225448.24976187,
+  "limit_changes_per_collection_day": 0.08000657138163299,
+  "exceedance_windows_per_collection_day": 2.308197798587153,
+  "exceedance_free_collection_day_fraction": 0.8848365368818795,
+  "pass_seconds": 40.241499375,
+  "pass_runs": 14,
+  "windows_per_second": 630593.3524873786,
+  "tracking": {
+    "fully_automated": {
+      "collections": 107,
+      "updates": 7801,
+      "mean_abs_rel_error": {
+        "0": 0.18377769396666543,
+        "1": 0.18370604688946326,
+        "12": 0.18311852680145002,
+        "2": 0.1836347619042271
+      },
+      "median_abs_rel_error": {
+        "0": 0.0952650810694694,
+        "1": 0.09528198534407148,
+        "12": 0.09546793236469413,
+        "2": 0.09529888961867353
+      },
+      "post_update_mean_abs_rel_error": {
+        "0": 0.21686704575738597,
+        "1": 0.21578501888671298,
+        "12": 0.20646582880530795,
+        "2": 0.21453063445301962
+      },
+      "post_update_collections": 107,
+      "direction_agreement": 0.00796180395361295
+    },
+    "off": {
+      "collections": 96,
+      "updates": 9,
+      "mean_abs_rel_error": {
+        "0": 0.5199724611379324,
+        "1": 0.5199723676086615,
+        "12": 0.5199713387866813,
+        "2": 0.5199722740793905
+      },
+      "median_abs_rel_error": {
+        "0": 0.5408206279990616,
+        "1": 0.5408206279990616,
+        "12": 0.5408206279990616,
+        "2": 0.5408206279990616
+      },
+      "post_update_mean_abs_rel_error": {
+        "0": 0.038365155950576456,
+        "1": 0.03836516201253687,
+        "12": 0.0039901620125368745,
+        "2": 0.03524016201253687
+      },
+      "post_update_collections": 2,
+      "direction_agreement": 0
+    }
+  }
+}

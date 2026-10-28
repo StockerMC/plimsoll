@@ -1,23 +1,23 @@
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscalerCheckpoint
 metadata:
-  creationTimestamp: "2026-10-28T06:40:09Z"
+  creationTimestamp: "2026-10-28T07:14:32Z"
   generation: 3
   name: ours-memload
   namespace: scenario-restart
-  resourceVersion: "1936"
-  uid: 80b4d93b-e8a8-4add-bf0f-398089a23bed
+  resourceVersion: "5400"
+  uid: 37c654ef-f6f0-4d72-b7ca-e899fb56308f
 spec:
   containerName: memload
   vpaObjectName: ours
 status:
-  firstSampleStart: "2026-10-28T06:40:00Z"
-  lastSampleStart: "2026-10-28T06:42:00Z"
-  lastUpdateTime: "2026-10-28T06:43:09Z"
+  firstSampleStart: "2026-10-28T07:15:00Z"
+  lastSampleStart: "2026-10-28T07:16:00Z"
+  lastUpdateTime: "2026-10-28T07:17:32Z"
   memoryHistogram:
     bucketWeights:
       "22": 10000
     referenceTimestamp: "2026-10-29T00:00:00Z"
-    totalWeight: 1.2123260668135445
+    totalWeight: 1.2329235398633263
   totalSamplesCount: 2
   version: plimsoll-v1

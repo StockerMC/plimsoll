@@ -32,7 +32,7 @@ type summary struct {
 	SkippedRows     int `json:"skipped_rows"`
 	// Mean and median over collections of the collection's mean over its
 	// days.
-	MeanRelativeSlack   float64 `json:"mean_relative_slack"`
+	MeanRelativeSlack   maybe   `json:"mean_relative_slack"`
 	MedianRelativeSlack float64 `json:"median_relative_slack"`
 	// Sum over scored instance-windows of limit times seconds, in trace
 	// memory units times seconds.
@@ -53,12 +53,30 @@ type summary struct {
 type trackingBlock struct {
 	Collections         int                `json:"collections"`
 	Updates             int                `json:"updates"`
-	MeanAbsRelError     map[string]float64 `json:"mean_abs_rel_error"`
+	MeanAbsRelError     map[string]maybe   `json:"mean_abs_rel_error"`
 	MedianAbsRelError   map[string]float64 `json:"median_abs_rel_error"`
-	PostUpdateMeanError map[string]float64 `json:"post_update_mean_abs_rel_error"`
+	PostUpdateMeanError map[string]maybe   `json:"post_update_mean_abs_rel_error"`
 	// Collections with at least one scored post-update window.
-	PostUpdateCollections int     `json:"post_update_collections"`
-	DirectionAgreement    float64 `json:"direction_agreement"`
+	PostUpdateCollections int   `json:"post_update_collections"`
+	DirectionAgreement    maybe `json:"direction_agreement"`
+}
+
+// maybe is a metric that is undefined over no collections; NaN is written
+// as null, which encoding/json cannot represent otherwise.
+type maybe float64
+
+func (m maybe) MarshalJSON() ([]byte, error) {
+	if math.IsNaN(float64(m)) {
+		return []byte("null"), nil
+	}
+	return json.Marshal(float64(m))
+}
+
+func (m maybe) String() string {
+	if math.IsNaN(float64(m)) {
+		return "undefined"
+	}
+	return strconv.FormatFloat(float64(m), 'f', 3, 64)
 }
 
 func summarize(p *pass, i int, runID, commit, split string) summary {
@@ -87,7 +105,7 @@ func summarize(p *pass, i int, runID, commit, split string) summary {
 		windows += x.Windows
 	}
 	s.Groups = len(groups)
-	s.MeanRelativeSlack = mean(slacks)
+	s.MeanRelativeSlack = maybe(mean(slacks))
 	s.MedianRelativeSlack = metrics.Percentile(slacks, 0.5)
 	if s.CollectionDays > 0 {
 		s.LimitChangesPerCollectionDay = float64(changes) / float64(s.CollectionDays)
@@ -104,7 +122,7 @@ func summarize(p *pass, i int, runID, commit, split string) summary {
 }
 
 func aggregateTracking(rs []result, verticalScaling int) trackingBlock {
-	b := trackingBlock{MeanAbsRelError: map[string]float64{}, MedianAbsRelError: map[string]float64{}, PostUpdateMeanError: map[string]float64{}}
+	b := trackingBlock{MeanAbsRelError: map[string]maybe{}, MedianAbsRelError: map[string]float64{}, PostUpdateMeanError: map[string]maybe{}}
 	errs := make(map[int][]float64)
 	post := make(map[int][]float64)
 	var agreement []float64
@@ -128,12 +146,12 @@ func aggregateTracking(rs []result, verticalScaling int) trackingBlock {
 	}
 	for _, lag := range lags {
 		k := strconv.Itoa(lag)
-		b.MeanAbsRelError[k] = mean(errs[lag])
+		b.MeanAbsRelError[k] = maybe(mean(errs[lag]))
 		b.MedianAbsRelError[k] = metrics.Percentile(errs[lag], 0.5)
-		b.PostUpdateMeanError[k] = mean(post[lag])
+		b.PostUpdateMeanError[k] = maybe(mean(post[lag]))
 	}
 	b.PostUpdateCollections = len(post[0])
-	b.DirectionAgreement = mean(agreement)
+	b.DirectionAgreement = maybe(mean(agreement))
 	return b
 }
 
@@ -205,11 +223,11 @@ func printSummary(s summary) {
 	}
 }
 
-func byLag(m map[string]float64) []string {
+func byLag(m map[string]maybe) []string {
 	var out []string
 	for _, lag := range lags {
 		k := strconv.Itoa(lag)
-		out = append(out, k+":"+strconv.FormatFloat(m[k], 'f', 4, 64))
+		out = append(out, k+":"+strconv.FormatFloat(float64(m[k]), 'f', 4, 64))
 	}
 	return out
 }

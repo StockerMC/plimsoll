@@ -84,7 +84,7 @@ func writeSweep(path string, p *pass) error {
 			s.ExceedanceWindowsPerCollectionDay, s.LimitChangesPerCollectionDay, mark(eligible[i]), map[bool]string{true: " chosen"}[chosen[s.Recommender] == i && eligible[i]])
 	}
 	w.Flush()
-	if math.IsNaN(rows[0].MeanRelativeSlack) {
+	if math.IsNaN(float64(rows[0].MeanRelativeSlack)) {
 		return fmt.Errorf("no scored collections")
 	}
 	return w.Error()

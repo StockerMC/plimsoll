@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -36,8 +37,9 @@ type comparison struct {
 	CandidateSlack   float64 `json:"candidate_slack"`
 	BaselineSlack    float64 `json:"baseline_slack"`
 	MemoryTimeChange float64 `json:"memory_time_change"`
-	ExceedanceRatio  float64 `json:"exceedance_ratio"`
-	ChangesRatio     float64 `json:"changes_ratio"`
+	// Candidate over baseline; null when the baseline has none.
+	ExceedanceRatio  maybe   `json:"exceedance_ratio"`
+	ChangesRatio     maybe   `json:"changes_ratio"`
 	CandidateExceed  float64 `json:"candidate_exceedance_per_day"`
 	BaselineExceed   float64 `json:"baseline_exceedance_per_day"`
 	CandidateChanges float64 `json:"candidate_changes_per_day"`
@@ -125,11 +127,14 @@ func compareRuns(candidate, baseline, out string) error {
 		return err
 	}
 	name := filepath.Join(dir, cs.RunID+"-vs-"+bs.RunID)
-	raw, _ := json.MarshalIndent(c, "", "  ")
+	raw, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
 	if err := os.WriteFile(name+".json", append(raw, '\n'), 0o644); err != nil {
 		return err
 	}
-	md := fmt.Sprintf("# %s vs %s\n\nActuator %s, split %s, %d collections in %d groups. Bootstrap 95%% CI over groups, %d resamples, seed %d.\n\n| metric | value |\n|---|---|\n| mean slack, candidate | %.4f |\n| mean slack, baseline | %.4f |\n| paired slack difference | %+.4f [%+.4f, %+.4f] |\n| memory-time change | %+.2f%% |\n| exceedance windows per collection-day, candidate / baseline | %.4f / %.4f (ratio %.3f) |\n| limit changes per collection-day, candidate / baseline | %.4f / %.4f (ratio %.3f) |\n| win fraction | %.3f |\n",
+	md := fmt.Sprintf("# %s vs %s\n\nActuator %s, split %s, %d collections in %d groups. Bootstrap 95%% CI over groups, %d resamples, seed %d.\n\n| metric | value |\n|---|---|\n| mean slack, candidate | %.4f |\n| mean slack, baseline | %.4f |\n| paired slack difference | %+.4f [%+.4f, %+.4f] |\n| memory-time change | %+.2f%% |\n| exceedance windows per collection-day, candidate / baseline | %.4f / %.4f (ratio %s) |\n| limit changes per collection-day, candidate / baseline | %.4f / %.4f (ratio %s) |\n| win fraction | %.3f |\n",
 		cs.RunID, bs.RunID, c.Actuator, c.Split, c.Collections, c.Groups, bootstrapResamples, bootstrapSeed,
 		c.CandidateSlack, c.BaselineSlack, c.SlackDifference, c.SlackCILow, c.SlackCIHigh, 100*c.MemoryTimeChange,
 		c.CandidateExceed, c.BaselineExceed, c.ExceedanceRatio, c.CandidateChanges, c.BaselineChanges, c.ChangesRatio, c.WinFraction)
@@ -172,9 +177,9 @@ func readCollections(path string) (map[int64]collectionRow, error) {
 	return out, nil
 }
 
-func ratioOf(a, b int) float64 {
+func ratioOf(a, b int) maybe {
 	if b == 0 {
-		return 0
+		return maybe(math.NaN())
 	}
-	return float64(a) / float64(b)
+	return maybe(float64(a) / float64(b))
 }

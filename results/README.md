@@ -2,6 +2,8 @@
 
 `results/raw/` is not committed: per-collection series and logs. `results/summary/` is: one directory per replay run, the sweep table, the comparisons, and the kind scenario runs.
 
+`trace-kind-<date>/` is `make trace-kind`: the three Borg curves in `deploy/curves/` played on kind at 60x, with the scoring explained in its `summary.md`. `kind-<date>/` holds VPA status snapshots from the demo.
+
 ## Replay runs
 
 `scripts/replay-all.sh sweep` replays every entry of `configs/sweep-cella.json` on the tune split and writes `sweep-cella.csv`, one row per run; `sweep-beyond.csv` is the same for `configs/sweep-beyond.json`, the fall-hysteresis grid, and `sweep-ratio.csv` for `configs/sweep-ratio.json`, the learned-margin grid. The window reference (p98, 48 h half-life, 12-window peak and max, 15%/10% margin) is never swept. A row is eligible when its exceedance windows and limit changes per collection-day are each within 10% of the reference's; the chosen row per recommender is the eligible one with the lowest mean slack. The chosen values are copied into `configs/default.json` by hand and committed before the report split is run.

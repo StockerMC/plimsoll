@@ -18,8 +18,10 @@ func daily(r *Recommender, days int) {
 
 // The last of eight daily peaks is in a window that is still open and has the
 // largest weight; the restored target has to keep it (p90 lands on 8e8, not 7e8).
+// First, Last and Samples feed the confidence multiplier on the bounds; one
+// sample per day keeps all three in play.
 func TestCheckpointRoundTrip(t *testing.T) {
-	opts := Options{Buckets: memoryOptions, SamplesPerDay: 288}
+	opts := Options{Buckets: memoryOptions, SamplesPerDay: 1}
 	saved := New(opts)
 	daily(saved, 8)
 	c, err := saved.Checkpoint()
@@ -30,7 +32,10 @@ func TestCheckpointRoundTrip(t *testing.T) {
 	if err := restored.Restore(c); err != nil {
 		t.Fatal(err)
 	}
-	inEpsilon(t, restored.Recommend().Target, saved.Recommend().Target, 1e-9)
+	got, want := restored.Recommend(), saved.Recommend()
+	inEpsilon(t, got.Target, want.Target, 1e-9)
+	inEpsilon(t, got.Lower, want.Lower, 1e-9)
+	inEpsilon(t, got.Upper, want.Upper, 1e-9)
 }
 
 func TestRestoreRefusesOtherVersion(t *testing.T) {

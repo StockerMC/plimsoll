@@ -15,16 +15,17 @@ import (
 )
 
 // Params are the tunable parameters of the percentile baseline and of the
-// model selector's globals, the latter once for ml and ensemble and once
-// for ensemble-held. Zero values mean the defaults.
+// model selector's globals, the latter once for ml and ensemble, once for
+// ensemble-held and once for ensemble-ratio. Zero values mean the defaults.
 type Params struct {
 	Percentile struct {
 		TargetPercentile float64 `json:"target_percentile"`
 		HalfLifeHours    float64 `json:"half_life_hours"`
 		Margin           float64 `json:"margin"`
 	} `json:"percentile"`
-	ML   selectorParams `json:"ml"`
-	Held selectorParams `json:"ensemble-held"`
+	ML    selectorParams `json:"ml"`
+	Held  selectorParams `json:"ensemble-held"`
+	Ratio selectorParams `json:"ensemble-ratio"`
 }
 
 type selectorParams struct {
@@ -35,6 +36,8 @@ type selectorParams struct {
 	ModelChange  float64 `json:"model_change"`
 	FallFraction float64 `json:"fall_fraction"`
 	FallWindows  int     `json:"fall_windows"`
+	RatioWindows int     `json:"ratio_windows"`
+	RatioFloor   float64 `json:"ratio_floor"`
 }
 
 // Trace memory is a fraction of the largest machine: the first
@@ -53,7 +56,7 @@ const (
 	hourWindows   = 12
 )
 
-var recommenders = []string{"percentile", "percentile-tuned", "window", "ml", "ensemble", "ensemble-held", "assigned", "naive"}
+var recommenders = []string{"percentile", "percentile-tuned", "window", "ml", "ensemble", "ensemble-held", "ensemble-ratio", "assigned", "naive"}
 
 // newRecommender returns the constructor for name; nil for the trace's own
 // assigned memory.
@@ -89,9 +92,20 @@ func newRecommender(name string, p Params) (func() recommender.Recommender, erro
 		if p.ML.FallFraction != 0 || p.ML.FallWindows != 0 {
 			return nil, fmt.Errorf("%s has no fall hysteresis; use ensemble-held", name)
 		}
+		if p.ML.RatioWindows != 0 || p.ML.RatioFloor != 0 {
+			return nil, fmt.Errorf("%s has no ratio margin; use ensemble-ratio", name)
+		}
 		return newEnsemble(name == "ml", p.ML), nil
 	case "ensemble-held":
+		if p.Held.RatioWindows != 0 || p.Held.RatioFloor != 0 {
+			return nil, fmt.Errorf("%s has no ratio margin; use ensemble-ratio", name)
+		}
 		return newEnsemble(false, p.Held), nil
+	case "ensemble-ratio":
+		if p.Ratio.RatioWindows == 0 {
+			return nil, fmt.Errorf("%s needs ratio_windows", name)
+		}
+		return newEnsemble(false, p.Ratio), nil
 	case "assigned":
 		return nil, nil
 	case "naive":
@@ -109,6 +123,8 @@ func newEnsemble(argminOnly bool, p selectorParams) func() recommender.Recommend
 		Decay:        p.Decay,
 		FallFraction: p.FallFraction,
 		FallWindows:  p.FallWindows,
+		RatioWindows: p.RatioWindows,
+		RatioFloor:   p.RatioFloor,
 	}
 	return func() recommender.Recommender { return ensemble.New(opts) }
 }

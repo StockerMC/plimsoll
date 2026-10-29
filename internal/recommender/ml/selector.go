@@ -48,6 +48,8 @@ type Selector struct {
 	below   int       // windows in a row the ring max has sat FallFraction under held
 	seen    int
 	peak    float64
+	first   time.Time                  // first window observed
+	last    time.Time                  // latest window observed
 	peaks   map[string]float64         // each instance's peak in the last window
 	pending []recommender.InstancePeak // OOM bumps for the next window
 }
@@ -68,11 +70,20 @@ func New(opts Options) *Selector {
 // Observe scores every arm on the window, lets each arm learn from it, and
 // picks the arm for the next window.
 func (s *Selector) Observe(sample recommender.Sample) {
+	// A window already observed can come back after a restart, from a pod
+	// whose reading lags the others.
+	if !s.last.IsZero() && !sample.Time.After(s.last) {
+		return
+	}
 	peaks := slices.Concat(sample.Peaks, s.pending)
 	s.pending = nil
 	if len(peaks) == 0 {
 		return
 	}
+	if s.first.IsZero() {
+		s.first = sample.Time
+	}
+	s.last = sample.Time
 	clear(s.peaks)
 	for _, p := range sample.Peaks {
 		s.peaks[p.Instance] = p.Peak

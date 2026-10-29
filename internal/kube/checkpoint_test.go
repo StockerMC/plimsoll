@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"strings"
 	"testing"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/StockerMC/plimsoll/internal/histogram"
 	"github.com/StockerMC/plimsoll/internal/recommender"
@@ -80,8 +83,9 @@ func TestCheckpointOfAnotherWorkload(t *testing.T) {
 	}
 }
 
-// A state over the annotation limit is refused before anything is written,
-// so the last good checkpoint stays.
+// A state that takes the object's annotations, with the ones already on it,
+// over the limit is refused before anything is written, so the last good
+// checkpoint stays.
 func TestCheckpointTooLarge(t *testing.T) {
 	ctx := context.Background()
 	client := newClient()
@@ -90,9 +94,20 @@ func TestCheckpointTooLarge(t *testing.T) {
 	if err := PutCheckpoint(ctx, client, "ns", "foo", "app", "uid-1/Deployment/foo", small, at); err != nil {
 		t.Fatal(err)
 	}
+	res := client.Resource(checkpointResource).Namespace("ns")
+	obj, err := res.Get(ctx, "foo-app", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	annotations := obj.GetAnnotations()
+	annotations["other"] = strings.Repeat("0", maxAnnotationBytes/2)
+	obj.SetAnnotations(annotations)
+	if _, err := res.Update(ctx, obj, metav1.UpdateOptions{}); err != nil {
+		t.Fatal(err)
+	}
 	big := small
 	big.Samples = 2
-	big.State = bytes.Repeat([]byte("0"), maxAnnotationBytes)
+	big.State = bytes.Repeat([]byte("0"), maxAnnotationBytes/2)
 	if err := PutCheckpoint(ctx, client, "ns", "foo", "app", "uid-1/Deployment/foo", big, at); !errors.Is(err, ErrCheckpointTooLarge) {
 		t.Fatalf("PutCheckpoint: err %v, want ErrCheckpointTooLarge", err)
 	}

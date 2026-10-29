@@ -55,8 +55,8 @@ const windowsAnnotation = "plimsoll/open-windows"
 // percentile one, such as the ensemble's selector and arms.
 const stateAnnotation = "plimsoll/state"
 
-// maxAnnotationBytes bounds what a checkpoint writes into annotations,
-// under the API server's 256 KiB limit on all of an object's annotations.
+// maxAnnotationBytes bounds all of a checkpoint object's annotations, ours
+// and any others it already has, under the API server's 256 KiB limit.
 const maxAnnotationBytes = 192 << 10
 
 // ErrCheckpointTooLarge means a checkpoint's annotations would pass
@@ -153,13 +153,6 @@ func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 		return fmt.Errorf("marshal open windows: %w", err)
 	}
 	annotations := map[string]string{workloadAnnotation: workload, windowsAnnotation: string(windows), stateAnnotation: string(c.State)}
-	size := 0
-	for k, v := range annotations {
-		size += len(k) + len(v)
-	}
-	if size > maxAnnotationBytes {
-		return fmt.Errorf("%w: %s/%s annotations are %d bytes, limit %d", ErrCheckpointTooLarge, namespace, name, size, maxAnnotationBytes)
-	}
 	err = putCheckpoint(ctx, client, namespace, name, vpa, container, annotations, status)
 	if apierrors.IsConflict(err) {
 		err = putCheckpoint(ctx, client, namespace, name, vpa, container, annotations, status)
@@ -181,6 +174,9 @@ func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, nam
 			"spec":       map[string]any{"vpaObjectName": vpa, "containerName": container},
 			"status":     status,
 		}}
+		if err := checkSize(annotations); err != nil {
+			return err
+		}
 		obj.SetAnnotations(annotations)
 		_, err = res.Create(ctx, obj, metav1.CreateOptions{})
 		return err
@@ -196,10 +192,24 @@ func putCheckpoint(ctx context.Context, client dynamic.Interface, namespace, nam
 		merged = make(map[string]string)
 	}
 	maps.Copy(merged, annotations)
+	if err := checkSize(merged); err != nil {
+		return err
+	}
 	obj.SetAnnotations(merged)
 	obj.Object["status"] = status
 	_, err = res.Update(ctx, obj, metav1.UpdateOptions{})
 	return err
+}
+
+func checkSize(annotations map[string]string) error {
+	size := 0
+	for k, v := range annotations {
+		size += len(k) + len(v)
+	}
+	if size > maxAnnotationBytes {
+		return fmt.Errorf("%w: annotations are %d bytes, limit %d", ErrCheckpointTooLarge, size, maxAnnotationBytes)
+	}
+	return nil
 }
 
 func toMap(v any) (map[string]any, error) {

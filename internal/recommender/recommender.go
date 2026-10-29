@@ -47,6 +47,9 @@ type Checkpoint struct {
 	// histogram, so a sample after a restore replaces a peak instead of
 	// adding a second one for the same window.
 	Windows []OpenWindow
+	// Model state upstream's status has no fields for, opaque to the
+	// transport.
+	State []byte
 }
 
 // OpenWindow is one instance's open aggregation window.

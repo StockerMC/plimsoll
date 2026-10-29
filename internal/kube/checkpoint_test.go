@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"maps"
@@ -24,6 +25,7 @@ func TestCheckpointRefusesOtherOwner(t *testing.T) {
 		Last:      at.Add(2 * time.Minute),
 		Samples:   2,
 		Windows:   []recommender.OpenWindow{{Instance: "pod-1", End: at.Add(24 * time.Hour), Peak: 3e8, LastSample: at.Add(2 * time.Minute)}},
+		State:     []byte(`{"Limit":4.7645046386109596e+08}`),
 	}
 	if err := PutCheckpoint(ctx, client, "ns", "foo", "bar-baz", "uid-1/Deployment/foo", want, at); err != nil {
 		t.Fatal(err)
@@ -36,7 +38,8 @@ func TestCheckpointRefusesOtherOwner(t *testing.T) {
 	if got.Version != want.Version || !got.First.Equal(want.First) || !got.Last.Equal(want.Last) || got.Samples != want.Samples ||
 		!got.Histogram.ReferenceTimestamp.Equal(want.Histogram.ReferenceTimestamp) ||
 		!maps.Equal(got.Histogram.BucketWeights, want.Histogram.BucketWeights) || got.Histogram.TotalWeight != want.Histogram.TotalWeight ||
-		len(got.Windows) != 1 || got.Windows[0].Instance != "pod-1" || !got.Windows[0].End.Equal(want.Windows[0].End) || got.Windows[0].Peak != want.Windows[0].Peak {
+		len(got.Windows) != 1 || got.Windows[0].Instance != "pod-1" || !got.Windows[0].End.Equal(want.Windows[0].End) || got.Windows[0].Peak != want.Windows[0].Peak ||
+		string(got.State) != string(want.State) {
 		t.Fatalf("GetCheckpoint = %+v, want %+v", got, want)
 	}
 
@@ -74,5 +77,26 @@ func TestCheckpointOfAnotherWorkload(t *testing.T) {
 	got, found, err := GetCheckpoint(ctx, client, "ns", "foo", "app", "uid-2/Deployment/foo")
 	if err != nil || !found || got.Samples != 1 {
 		t.Errorf("after the recreated VPA's save: samples %d, found %v, err %v, want 1", got.Samples, found, err)
+	}
+}
+
+// A state over the annotation limit is refused before anything is written,
+// so the last good checkpoint stays.
+func TestCheckpointTooLarge(t *testing.T) {
+	ctx := context.Background()
+	client := newClient()
+	at := time.Date(2026, 10, 29, 6, 40, 0, 0, time.UTC)
+	small := recommender.Checkpoint{Version: "plimsoll-ensemble-v1", Samples: 1, State: []byte("{}")}
+	if err := PutCheckpoint(ctx, client, "ns", "foo", "app", "uid-1/Deployment/foo", small, at); err != nil {
+		t.Fatal(err)
+	}
+	big := small
+	big.Samples = 2
+	big.State = bytes.Repeat([]byte("0"), maxAnnotationBytes)
+	if err := PutCheckpoint(ctx, client, "ns", "foo", "app", "uid-1/Deployment/foo", big, at); !errors.Is(err, ErrCheckpointTooLarge) {
+		t.Fatalf("PutCheckpoint: err %v, want ErrCheckpointTooLarge", err)
+	}
+	if got, _, _ := GetCheckpoint(ctx, client, "ns", "foo", "app", "uid-1/Deployment/foo"); got.Samples != 1 {
+		t.Errorf("samples %d after a refused write, want 1", got.Samples)
 	}
 }

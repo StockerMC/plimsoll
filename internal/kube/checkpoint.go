@@ -51,6 +51,18 @@ const workloadAnnotation = "plimsoll/workload"
 // checkpoint status has no field for them and the CRD prunes unknown ones.
 const windowsAnnotation = "plimsoll/open-windows"
 
+// stateAnnotation holds the model state of a recommender other than the
+// percentile one, such as the ensemble's selector and arms.
+const stateAnnotation = "plimsoll/state"
+
+// maxAnnotationBytes bounds what a checkpoint writes into annotations,
+// under the API server's 256 KiB limit on all of an object's annotations.
+const maxAnnotationBytes = 192 << 10
+
+// ErrCheckpointTooLarge means a checkpoint's annotations would pass
+// maxAnnotationBytes; nothing is written.
+var ErrCheckpointTooLarge = errors.New("checkpoint too large")
+
 // checkpointName is upstream's naming, <vpa>-<container>. foo/bar-baz and
 // foo-bar/baz share a name, so reads and writes check the spec.
 func checkpointName(vpa, container string) string {
@@ -108,6 +120,7 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 		Last:    s.LastSampleStart.Time,
 		Samples: s.TotalSamplesCount,
 		Windows: windows,
+		State:   []byte(obj.GetAnnotations()[stateAnnotation]),
 	}, true, nil
 }
 
@@ -115,12 +128,17 @@ func GetCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 // for workload. The CRD has no status subresource, so the whole object is
 // updated. It refuses to overwrite a checkpoint of another VPA or container.
 func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa, container, workload string, c recommender.Checkpoint, now time.Time) error {
+	name := checkpointName(vpa, container)
+	weights := c.Histogram.BucketWeights
+	if weights == nil {
+		weights = map[int]uint32{}
+	}
 	status, err := toMap(checkpointStatus{
 		LastUpdateTime: metav1.NewTime(now),
 		Version:        c.Version,
 		MemoryHistogram: histogramCheckpoint{
 			ReferenceTimestamp: metav1.NewTime(c.Histogram.ReferenceTimestamp),
-			BucketWeights:      c.Histogram.BucketWeights,
+			BucketWeights:      weights,
 			TotalWeight:        c.Histogram.TotalWeight,
 		},
 		FirstSampleStart:  metav1.NewTime(c.First),
@@ -134,8 +152,14 @@ func PutCheckpoint(ctx context.Context, client dynamic.Interface, namespace, vpa
 	if err != nil {
 		return fmt.Errorf("marshal open windows: %w", err)
 	}
-	annotations := map[string]string{workloadAnnotation: workload, windowsAnnotation: string(windows)}
-	name := checkpointName(vpa, container)
+	annotations := map[string]string{workloadAnnotation: workload, windowsAnnotation: string(windows), stateAnnotation: string(c.State)}
+	size := 0
+	for k, v := range annotations {
+		size += len(k) + len(v)
+	}
+	if size > maxAnnotationBytes {
+		return fmt.Errorf("%w: %s/%s annotations are %d bytes, limit %d", ErrCheckpointTooLarge, namespace, name, size, maxAnnotationBytes)
+	}
 	err = putCheckpoint(ctx, client, namespace, name, vpa, container, annotations, status)
 	if apierrors.IsConflict(err) {
 		err = putCheckpoint(ctx, client, namespace, name, vpa, container, annotations, status)

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: memload
+data:
+  hold.py: |
+    import sys, time
+    held = []
+    for _ in range(int(sys.argv[1]) // 16):
+        held.append(b"x" * (16 << 20))
+        time.sleep(1)
+    while True:
+        time.sleep(60)

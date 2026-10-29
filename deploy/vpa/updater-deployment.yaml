@@ -1,0 +1,60 @@
+# kubernetes/autoscaler vertical-pod-autoscaler/deploy/updater-deployment.yaml at tag vertical-pod-autoscaler-1.8.1, with args added for short kind runs.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpa-updater
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpa-updater
+  template:
+    metadata:
+      labels:
+        app: vpa-updater
+    spec:
+      serviceAccountName: vpa-updater
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534 # nobody
+      containers:
+        - name: updater
+          image: registry.k8s.io/autoscaling/vpa-updater:1.8.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --min-replicas=1
+            - --updater-interval=1m
+            - --pod-update-threshold=0.1
+            - --in-recommendation-bounds-eviction-lifetime-threshold=2m
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            limits:
+              cpu: 200m
+              memory: 1000Mi
+            requests:
+              cpu: 50m
+              memory: 500Mi
+          ports:
+            - name: prometheus
+              containerPort: 8943
+          livenessProbe:
+            httpGet:
+              path: /health-check
+              port: prometheus
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: prometheus
+              scheme: HTTP
+            periodSeconds: 10
+            failureThreshold: 3

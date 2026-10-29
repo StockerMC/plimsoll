@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: helm/kind-action@v1
+        with:
+          version: v0.33.0
+          kubectl_version: v1.37.0
+          node_image: kindest/node:v1.37.0
+          cluster_name: plimsoll
+          config: deploy/kind/kind-config.yaml
+      - run: scripts/kind-up.sh
+      - run: kubectl apply -f deploy/demo/rbac.yaml -f deploy/demo/memload.yaml -f deploy/demo/vpa.yaml
+      - run: kubectl rollout status deployment/demo --timeout=3m
+      - run: kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=3m
+      - run: go build -o bin/recommender ./cmd/recommender
+      - run: bin/recommender --once
+      - run: test -n "$(kubectl get vpa demo -o jsonpath='{.status.recommendation.containerRecommendations[0].target.memory}')"
+      - if: failure()
+        run: kubectl get pods,vpa -A -o wide

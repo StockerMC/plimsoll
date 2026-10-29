@@ -122,6 +122,8 @@ func TestRestoreRefusesWithoutChange(t *testing.T) {
 	}
 	other := o
 	other.FallWindows = 6
+	window := o
+	window.Window = 5 * time.Minute
 	edit := func(f func(st map[string]any)) recommender.Checkpoint {
 		var st map[string]any
 		if err := json.Unmarshal(good.State, &st); err != nil {
@@ -144,6 +146,7 @@ func TestRestoreRefusesWithoutChange(t *testing.T) {
 	}{
 		{"malformed", o, malformed},
 		{"other config", other, good},
+		{"other memory window", window, good},
 		{"percentile version", o, recommender.Checkpoint{Version: "plimsoll-v2 aggregation=24h0m0s half-life=24h0m0s", State: good.State}},
 		{"missing arm", o, edit(func(st map[string]any) { st["Arms"] = st["Arms"].([]any)[1:] })},
 		{"last arm's buckets", o, edit(func(st map[string]any) {

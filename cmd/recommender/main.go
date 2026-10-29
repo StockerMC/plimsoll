@@ -78,6 +78,7 @@ func main() {
 			RatioFloor:   *ratioFloor,
 			TimeScale:    *timeScale,
 			HourWindows:  *hourWindows,
+			Window:       *window,
 		},
 		checkpoints: *checkpoints,
 		vpas:        make(map[types.UID]*vpaState),

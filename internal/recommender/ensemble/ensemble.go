@@ -42,6 +42,9 @@ type Options struct {
 	TimeScale float64
 	// Windows in the selector's max and cold start; zero is hourWindows.
 	HourWindows int
+	// Length of one window. The selector only counts windows, but its
+	// saved state means something else under another length.
+	Window time.Duration
 }
 
 var (

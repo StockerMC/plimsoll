@@ -150,6 +150,14 @@ func TestRestoreRefusesWithoutChange(t *testing.T) {
 			arms := st["Arms"].([]any)
 			arms[len(arms)-1].(map[string]any)["Usage"] = []float64{1}
 		})},
+		{"no held value", o, edit(func(st map[string]any) { delete(st, "Held") })},
+		{"unknown field", o, edit(func(st map[string]any) { st["Margin"] = 0.1 })},
+		{"negative arm weight", o, edit(func(st map[string]any) { st["Arms"].([]any)[0].(map[string]any)["Weight"] = -1 })},
+		{"negative fall count", o, edit(func(st map[string]any) { st["Below"] = -1 })},
+		{"held under the ring", o, edit(func(st map[string]any) { st["Held"] = 1 })},
+		{"windows seen", o, edit(func(st map[string]any) { st["Seen"] = 3 })},
+		{"first after last", o, edit(func(st map[string]any) { st["First"] = t0.Add(48 * time.Hour) })},
+		{"arm behind the selector", o, edit(func(st map[string]any) { st["Arms"].([]any)[2].(map[string]any)["Last"] = t0 })},
 	} {
 		s := New(tt.o)
 		for _, e := range events()[40:50] {

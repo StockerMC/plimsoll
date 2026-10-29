@@ -2,8 +2,11 @@ package window
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/StockerMC/plimsoll/internal/recommender"
 )
 
 type state struct {
@@ -23,13 +26,19 @@ func (r *Recommender) SaveState() (json.RawMessage, error) {
 	return json.Marshal(state{Usage: r.usage, Wsum: r.wsum, Mean: r.mean, Peaks: r.peaks, Last: r.last, Raw: r.raw, Limit: r.limit, Ring: r.ring})
 }
 
-// LoadState checks a saved state and returns the function that installs it.
-func (r *Recommender) LoadState(raw json.RawMessage) (func(), error) {
+// LoadState checks a saved state against last, the ensemble's latest
+// window, and returns the function that installs it.
+func (r *Recommender) LoadState(raw json.RawMessage, last time.Time) (func(), error) {
 	var st state
-	if err := json.Unmarshal(raw, &st); err != nil {
+	if err := recommender.DecodeState(raw, &st); err != nil {
 		return nil, err
 	}
 	switch {
+	case !st.Last.Equal(last):
+		return nil, fmt.Errorf("last window %v, ensemble's %v", st.Last, last)
+	case !recommender.NonNegative(st.Usage...) || !recommender.NonNegative(st.Peaks...) || !recommender.NonNegative(st.Ring...) ||
+		!recommender.NonNegative(st.Wsum, st.Mean, st.Raw, st.Limit):
+		return nil, errors.New("negative weight, peak or limit")
 	case len(st.Usage) != len(r.usage):
 		return nil, fmt.Errorf("%d buckets, want %d", len(st.Usage), len(r.usage))
 	case len(st.Peaks) > max(r.opts.PeakWindows, 1), len(st.Ring) > max(r.opts.MaxWindows, 1):

@@ -33,6 +33,9 @@ type Options struct {
 	MinMemory float64
 	// Floor on the bump an OOM adds to the request, 100 MiB in upstream.
 	OOMMinBump float64
+	// Checkpoint version, naming the configuration; empty disables
+	// checkpoints.
+	Version string
 }
 
 // Selector runs every arm on every window and recommends the limit of the

@@ -216,7 +216,7 @@ func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name
 	}
 	saved, found, err := kube.GetCheckpoint(ctx, l.client, vpa.GetNamespace(), vpa.GetName(), name, workload(vpa))
 	if errors.Is(err, kube.ErrUnusableCheckpoint) {
-		log.Print(err)
+		log.Printf("%v; starting cold", err)
 		c.restored = true
 		return nil
 	}
@@ -228,7 +228,7 @@ func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name
 		return nil
 	}
 	if err := cp.Restore(saved); err != nil {
-		log.Printf("checkpoint %s/%s %s: %v", vpa.GetNamespace(), vpa.GetName(), name, err)
+		log.Printf("checkpoint %s/%s %s: %v; starting cold", vpa.GetNamespace(), vpa.GetName(), name, err)
 		return nil
 	}
 	c.supported = true

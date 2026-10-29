@@ -4,6 +4,8 @@
 package ensemble
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"time"
 
 	"github.com/StockerMC/plimsoll/internal/histogram"
@@ -50,9 +52,11 @@ var (
 )
 
 const (
-	DefaultDecay   = 0.2
-	windowHalfLife = 48 * time.Hour
-	percentile     = 0.98
+	// checkpointVersion changes with the checkpoint's layout.
+	checkpointVersion = "plimsoll-ensemble-v1"
+	DefaultDecay      = 0.2
+	windowHalfLife    = 48 * time.Hour
+	percentile        = 0.98
 	// An hour at the paper's 5-minute window; a shorter --memory-window
 	// shortens the cold start and the max with it.
 	hourWindows = 12
@@ -74,6 +78,7 @@ func New(o Options) *ml.Selector {
 	if hour == 0 {
 		hour = hourWindows
 	}
+	o.Weights, o.Decay, o.TimeScale, o.HourWindows = weights, costDecay, scale, hour
 	scaled := func(d time.Duration) time.Duration { return time.Duration(float64(d) / scale) }
 	margin := window.StepMargin(o.LargeLimit)
 	var arms []ml.Arm
@@ -109,5 +114,18 @@ func New(o Options) *ml.Selector {
 		Margin:       margin,
 		MinMemory:    o.MinMemory,
 		OOMMinBump:   o.OOMMinBump,
+		Version:      version(o),
 	})
+}
+
+// version names every setting that shapes the selector's state, so a
+// checkpoint is only restored into the configuration that wrote it.
+func version(o Options) string {
+	b := o.Buckets
+	o.Buckets = nil
+	n := b.NumBuckets()
+	config := fmt.Sprintf("%+v buckets=%d,%v,%v half-lives=%v margins=%v window=%v,%v",
+		o, n, b.GetBucketStart(1), b.GetBucketStart(n-1), halfLives, margins, windowHalfLife, percentile)
+	sum := sha256.Sum256([]byte(config))
+	return fmt.Sprintf("%s config=%x", checkpointVersion, sum[:8])
 }

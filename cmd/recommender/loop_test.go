@@ -17,6 +17,9 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/StockerMC/plimsoll/internal/histogram"
+	"github.com/StockerMC/plimsoll/internal/kube"
+	"github.com/StockerMC/plimsoll/internal/recommender"
+	"github.com/StockerMC/plimsoll/internal/recommender/ensemble"
 	"github.com/StockerMC/plimsoll/internal/recommender/percentile"
 )
 
@@ -95,12 +98,17 @@ func demoVPA() *unstructured.Unstructured {
 	}}
 }
 
+// statusTarget returns the memory target published for the one container,
+// or "" when there is none.
 func statusTarget(t *testing.T, client *fake.FakeDynamicClient) string {
 	got, err := client.Resource(vpaResource).Namespace("default").Get(context.Background(), "demo", metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	recs, _, _ := unstructured.NestedSlice(got.Object, "status", "recommendation", "containerRecommendations")
+	if len(recs) == 0 {
+		return ""
+	}
 	if len(recs) != 1 {
 		t.Fatalf("got %d container recommendations, want 1", len(recs))
 	}
@@ -139,8 +147,55 @@ func TestOOMWhileMetricsAreDown(t *testing.T) {
 		t.Fatal("second pass: want the metrics error")
 	}
 	target := statusTarget(t, client)
+	if target == "" {
+		t.Fatal("no recommendation published")
+	}
 	// 300Mi request plus upstream's 100 MiB bump, before the safety margin.
 	if q := resource.MustParse(target); q.Value() < 400<<20 {
 		t.Errorf("target %s after an OOM at 300Mi, want at least 400Mi", target)
+	}
+}
+
+// A failed checkpoint read must hold back the pass, so nothing is published
+// over a saved ensemble; the next pass restores and publishes the saved
+// target.
+func TestEnsembleRestoreRetriesFailedRead(t *testing.T) {
+	ctx := context.Background()
+	vpa := demoVPA()
+	vpa.Object["spec"].(map[string]any)["recommenders"] = []any{map[string]any{"name": "plimsoll-ensemble"}}
+	l, client := newDownLoop(t, vpa)
+	l.ensembleName = "plimsoll-ensemble"
+	l.ensembleOpts = ensemble.Options{Buckets: l.opts.Buckets, MinMemory: 250 << 20, LargeLimit: 1 << 30, OOMMinBump: 100 << 20}
+	l.checkpoints = true
+	saved := ensemble.New(l.ensembleOpts)
+	at := time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC)
+	for i := range 30 {
+		saved.Observe(recommender.Sample{Time: at.Add(time.Duration(i) * time.Minute), Peaks: []recommender.InstancePeak{{Instance: "demo-1", Peak: 4e8}}})
+	}
+	c, err := saved.Checkpoint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := kube.PutCheckpoint(ctx, client, "default", "demo", "app", "uid-1/Deployment/demo", c, at); err != nil {
+		t.Fatal(err)
+	}
+	failed := false
+	client.PrependReactor("get", "verticalpodautoscalercheckpoints", func(k8stesting.Action) (bool, runtime.Object, error) {
+		if failed {
+			return false, nil, nil
+		}
+		failed = true
+		return true, nil, errors.New("etcdserver: request timed out")
+	})
+	if err := l.runOnce(ctx); err == nil {
+		t.Fatal("first pass: want the read error")
+	}
+	if got := statusTarget(t, client); got != "" {
+		t.Fatalf("published %s after a failed checkpoint read", got)
+	}
+	l.runOnce(ctx)
+	want := quantity(saved.Recommend().Target).String()
+	if got := statusTarget(t, client); got != want {
+		t.Errorf("target %s after the retried read, want the saved %s", got, want)
 	}
 }

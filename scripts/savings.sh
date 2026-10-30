@@ -117,7 +117,7 @@ SHAPE
 		echo "batch=$batch"
 		echo "mode=$mode"
 		echo "recommender_flags=$flags --vpa-object-namespace=$ns --memory-window=1m"
-		go version -m "$recommender" | awk '$2 ~ /^vcs\.(revision|modified)$/ {print "binary_" $2 "=" $3}'
+		go version -m "$recommender" | awk '$1 == "build" && $2 ~ /^vcs\.(revision|modified)=/ {print "binary_" $2}'
 		echo "binary_sha256=$(shasum -a 256 "$recommender" | cut -d' ' -f1)"
 		echo "upstream_recommender_pod=$(kubectl -n kube-system get pod -l app=vpa-recommender -o jsonpath='{.items[*].metadata.uid}')"
 		echo "updater_args=$(kubectl -n kube-system get deploy vpa-updater -o jsonpath='{.spec.template.spec.containers[0].args}')"

@@ -1,11 +1,17 @@
 #!/bin/sh
 # Usage: scenarios.sh [steady|burst|restart|missing-metrics ...]
+# RUN names the output directories (default today's date); an existing one is refused.
 set -eu
 cd "$(dirname "$0")/.."
 
 tick=15
-out=results/summary/scenarios-$(date +%F)
-raw=results/raw/scenarios-$(date +%F)
+run=${RUN:-$(date +%F)}
+out=results/summary/scenarios-$run
+raw=results/raw/scenarios-$run
+if [ -e "$out" ] || [ -e "$raw" ]; then
+	echo "$out or $raw exists; pick another RUN" >&2
+	exit 2
+fi
 mkdir -p "$out" "$raw"
 
 go build -o bin/recommender ./cmd/recommender

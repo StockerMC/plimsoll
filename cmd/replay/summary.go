@@ -82,7 +82,7 @@ func (m maybe) String() string {
 func summarize(p *pass, i int, runID, commit, split string) summary {
 	rs := p.results[i]
 	r := p.runs[i]
-	s := summary{RunID: runID, Commit: commit, Cell: "a", Recommender: r.Recommender, Actuator: r.Actuator,
+	s := summary{RunID: runID, Commit: commit, Cell: p.cell, Recommender: r.Recommender, Actuator: r.Actuator,
 		Split: split, Params: r.Params, Collections: len(rs), PassSeconds: p.seconds, PassRuns: len(p.runs),
 		Tracking: make(map[string]trackingBlock)}
 	groups := make(map[string]bool)

@@ -45,6 +45,7 @@ type result struct {
 // pass replays every collection once through every run.
 type pass struct {
 	runs    []run
+	cell    string
 	split   string
 	limit   int
 	rawDir  string

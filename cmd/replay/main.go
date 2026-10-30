@@ -18,6 +18,7 @@ func main() {
 	log.SetFlags(0)
 	data := flag.String("data", "data/cell-a", "extract directory")
 	prefix := flag.String("prefix", "a_", "file name prefix in the extract directory")
+	cell := flag.String("cell", "a", "trace cell of the extract, recorded in each summary")
 	names := flag.String("recommender", "percentile", "comma-separated list of "+strings.Join(recommenders, ", "))
 	actuators := flag.String("actuator", "every", "comma-separated list of every, updater")
 	params := flag.String("params", "", "JSON file of parameters for percentile-tuned, ml and ensemble")
@@ -77,7 +78,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	pass := &pass{runs: runs, split: *split, limit: *limit, rawDir: *raw}
+	pass := &pass{runs: runs, cell: *cell, split: *split, limit: *limit, rawDir: *raw}
 	if err := pass.execute(r); err != nil {
 		log.Fatal(err)
 	}

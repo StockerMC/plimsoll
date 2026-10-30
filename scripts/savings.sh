@@ -11,7 +11,8 @@ tick=15
 off_s=${OFF_S:-1620}
 on_s=${ON_S:-1200}
 mode=${MODE:-InPlaceOrRecreate}
-batches=${BATCHES:-"s384:384:1536Mi,s288:288:1152Mi s512:512:1024Mi,s320:320:960Mi"}
+config=${CONFIG:-configs/default.json}
+batches=${BATCHES:-"s384:384:1536Mi,s288:288:576Mi s512:512:1024Mi,s320:320:960Mi"}
 
 raw=results/raw/savings-$run
 mkdir -p "$raw"
@@ -19,6 +20,15 @@ recommender=${RECOMMENDER:-bin/recommender}
 if [ -z "${RECOMMENDER:-}" ]; then
 	go build -o bin/recommender ./cmd/recommender
 fi
+
+# The live binary exposes only these held parameters; the rest must equal its built-in values.
+held_flags() {
+	jq -er '."ensemble-held" |
+		if (.decay | IN(0, 0.2)) and .underrun == 1 and .model_change == 0.1 and (.ratio_windows // 0) == 0
+		then "--ensemble-overrun-weight=\(.overrun) --ensemble-limit-change-weight=\(.limit_change) --ensemble-fall-fraction=\(.fall_fraction) --ensemble-fall-windows=\(.fall_windows)"
+		else error("ensemble-held sets a parameter the recommender has no flag for") end' "$config"
+}
+held=$(held_flags)
 
 rec=
 start_rec() {
@@ -81,8 +91,7 @@ side_run() {
 	case $side in
 	plimsoll) name=plimsoll flags="--recommender-name=plimsoll --ensemble-recommender-name=" ;;
 	ensemble) name=plimsoll-ensemble flags="--recommender-name=plimsoll --ensemble-recommender-name=plimsoll-ensemble" ;;
-	# configs/default.json ensemble-held; decay, underrun and model-change weights are the binary's defaults.
-	held) name=plimsoll-ensemble-held flags="--recommender-name=plimsoll-held-percentile-off --ensemble-recommender-name=plimsoll-ensemble-held --ensemble-overrun-weight=100 --ensemble-limit-change-weight=0 --ensemble-fall-fraction=0.1 --ensemble-fall-windows=288" ;;
+	held) name=plimsoll-ensemble-held flags="--recommender-name=plimsoll-held-percentile-off --ensemble-recommender-name=plimsoll-ensemble-held $held" ;;
 	upstream) name= flags= ;;
 	*) echo "unknown side $side" >&2; exit 2 ;;
 	esac
@@ -125,6 +134,8 @@ SHAPE
 		echo "recommender_flags=$flags --vpa-object-namespace=$ns --memory-window=1m"
 		go version -m "$recommender" | awk '$1 == "build" && $2 ~ /^vcs\.(revision|modified)=/ {print "binary_" $2}'
 		echo "binary_sha256=$(shasum -a 256 "$recommender" | cut -d' ' -f1)"
+		echo "config=$config"
+		echo "config_sha256=$(shasum -a 256 "$config" | cut -d' ' -f1)"
 		echo "off_s=$off_s"
 		echo "on_s=$on_s"
 		echo "upstream_recommender_pod=$(kubectl -n kube-system get pod -l app=vpa-recommender -o jsonpath='{.items[*].metadata.uid}')"

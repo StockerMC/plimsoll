@@ -26,7 +26,7 @@ if [ -e "$out" ]; then
 fi
 mkdir -p "$out/terminations" "$raw"
 
-held=$(scripts/held-flags.sh "$config" "$step")
+held=$(scripts/ensemble-flags.sh "$config" ensemble-held "$step")
 go build -o bin/recommender ./cmd/recommender
 go build -o bin/scenario-summary ./cmd/scenario-summary
 

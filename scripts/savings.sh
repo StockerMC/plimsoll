@@ -21,7 +21,7 @@ if [ -z "${RECOMMENDER:-}" ]; then
 	go build -o bin/recommender ./cmd/recommender
 fi
 
-held=$(scripts/held-flags.sh "$config")
+held=$(scripts/ensemble-flags.sh "$config" ensemble-held)
 
 rec=
 start_rec() {

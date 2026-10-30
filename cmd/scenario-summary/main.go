@@ -21,6 +21,8 @@ type result struct {
 	scenario, side string
 	stats
 	exceedance
+	// The count is a lower bound: the pod watch reconnected during the run.
+	killsIncomplete bool
 }
 
 func main() {
@@ -57,6 +59,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("%s: %v", name, err)
 		}
+		counts, complete, watched, err := kills(dir, name)
+		if err != nil {
+			log.Fatal(err)
+		}
 		for i, side := range sides {
 			r := result{scenario: name, side: side, stats: summarize(series, i, tolerance)}
 			if *trace {
@@ -64,6 +70,9 @@ func main() {
 					log.Fatalf("%s: no usage columns", name)
 				}
 				r.exceedance = scoreUsage(series, i)
+			}
+			if watched {
+				r.oomKills, r.killsIncomplete = counts[side], !complete
 			}
 			results = append(results, r)
 		}
@@ -91,16 +100,23 @@ var scenarioFormat = format{
 	note:   fmt.Sprintf("settle_s: seconds from the last event, or the start, until the target stays within %.0f%% of its final value.", tolerance*100),
 	header: []string{"scenario", "recommender", "final_target_mib", "min_target_mib", "max_target_mib", "oom_kills", "settle_s"},
 	columns: func(r result) []string {
-		return []string{r.scenario, r.side, mib(r.final), mib(r.min), mib(r.max), strconv.Itoa(r.oomKills), settleText(r)}
+		return []string{r.scenario, r.side, mib(r.final), mib(r.min), mib(r.max), killsText(r), settleText(r)}
 	},
 }
 
 var traceFormat = format{
-	note:   fmt.Sprintf("One row per curve and recommender. scored: 15 s samples with both a target and a `kubectl top` usage; exceedance: scored samples with usage above the target; slack: mean (target - usage) / target over the scored samples. `kubectl top` carries no timestamp and lags the curve by 15 to 60 s, so a target can already include the usage it is scored against: this is a concurrent comparison, not a test of prediction ahead of time. oom_kills: restarts sampled with reason OOMKilled; in updateMode Off the pods have no memory limit, so it only shows the curve ran uninterrupted. settle_s: seconds from the start until the target stays within %.0f%% of its final value.", tolerance*100),
+	note:   fmt.Sprintf("One row per curve and recommender. scored: 15 s samples with both a target and a `kubectl top` usage; exceedance: scored samples with usage above the target; slack: mean (target - usage) / target over the scored samples. `kubectl top` carries no timestamp and lags the curve by 15 to 60 s, so a target can already include the usage it is scored against: this is a concurrent comparison, not a test of prediction ahead of time. oom_kills: OOMKilled terminations seen by a pod watch, each pod UID, container and container ID counted once, with + when the watch reconnected and may have missed some (runs without a terminations directory: restarts of the first pod sampled with reason OOMKilled); in updateMode Off the pods have no memory limit, so it only shows the curve ran uninterrupted. settle_s: seconds from the start until the target stays within %.0f%% of its final value.", tolerance*100),
 	header: []string{"curve", "recommender", "scored", "exceedance", "mean_slack", "oom_kills", "settle_s"},
 	columns: func(r result) []string {
-		return []string{r.scenario, r.side, strconv.Itoa(r.scored), strconv.Itoa(r.over), strconv.FormatFloat(r.slack, 'f', 4, 64), strconv.Itoa(r.oomKills), settleText(r)}
+		return []string{r.scenario, r.side, strconv.Itoa(r.scored), strconv.Itoa(r.over), strconv.FormatFloat(r.slack, 'f', 4, 64), killsText(r), settleText(r)}
 	},
+}
+
+func killsText(r result) string {
+	if r.killsIncomplete {
+		return strconv.Itoa(r.oomKills) + "+"
+	}
+	return strconv.Itoa(r.oomKills)
 }
 
 func settleText(r result) string {

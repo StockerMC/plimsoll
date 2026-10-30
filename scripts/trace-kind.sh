@@ -24,7 +24,7 @@ if [ -e "$out" ]; then
 	echo "$out exists; pick another RUN" >&2
 	exit 2
 fi
-mkdir -p "$out" "$raw"
+mkdir -p "$out/terminations" "$raw"
 
 held=$(scripts/held-flags.sh "$config" "$step")
 go build -o bin/recommender ./cmd/recommender
@@ -35,6 +35,8 @@ sides="ours ensemble held upstream"
 target='{.status.recommendation.containerRecommendations[0].target.memory}'
 restarts='{.items[0].status.containerStatuses[0].restartCount}'
 reason='{.items[0].status.containerStatuses[0].lastState.terminated.reason}'
+term='{.metadata.labels.app},{.metadata.uid},{.status.containerStatuses[0].name},{.status.containerStatuses[0].@.terminated.containerID},{.status.containerStatuses[0].@.terminated.reason},{.status.containerStatuses[0].@.terminated.finishedAt}{"\n"}'
+term_path="$(printf %s "$term" | sed 's/@/lastState/g')$(printf %s "$term" | sed 's/@/state/g')"
 common="--memory-window=1m --memory-aggregation-interval=${day}s --memory-histogram-decay-half-life=${day}s --ensemble-time-scale=$compression --ensemble-hour-windows=$hour_windows"
 raw_flags="--recommender-name=plimsoll --ensemble-recommender-name=plimsoll-ensemble $common"
 held_flags="--recommender-name=plimsoll-held-percentile-off --ensemble-recommender-name=plimsoll-ensemble-held $common $held"
@@ -53,6 +55,17 @@ set_upstream_args() {
 	kubectl -n kube-system rollout status deployment/vpa-recommender --timeout=3m >/dev/null
 }
 
+# The restart columns sample only the first pod; oom_kills comes from this watch, which sees every
+# pod's terminations, and watch.csv records each reconnect, after which the count is a lower bound.
+watch_terminations() {
+	while :; do
+		echo "start,$(date +%s)" >>"$out/terminations/$1-watch.csv"
+		kubectl -n "$1" get pods --watch -o jsonpath="$term_path" 2>>"$raw/$1-watch.log" | grep --line-buffered -v '^[^,]*,[^,]*,[^,]*,,' || true
+		echo "exit,$(date +%s)" >>"$out/terminations/$1-watch.csv"
+		sleep 1
+	done >>"$out/terminations/$1.csv"
+}
+
 # sed -i takes different arguments on BSD and GNU.
 edit() {
 	f=$1
@@ -66,6 +79,7 @@ restored=
 pids=
 stop() {
 	for pid in $pids; do kill "$pid" 2>/dev/null || true; done
+	pkill -f -- "-n trace-[^ ]* get pods --watch" 2>/dev/null || true
 	wait 2>/dev/null || true
 	[ -n "$restored" ] || set_upstream_args "$saved_args" || true
 }
@@ -95,6 +109,10 @@ echo "$start" >"$raw/start"
 for curve in $curves; do
 	ns=trace-$(basename "$curve" .csv)
 	kubectl create namespace "$ns" >/dev/null
+	echo "workload,uid,container,container_id,reason,finished_at" >"$out/terminations/$ns.csv"
+	echo "event,time" >"$out/terminations/$ns-watch.csv"
+	watch_terminations "$ns" &
+	pids="$pids $!"
 	kubectl -n "$ns" create configmap curve --from-file=curve.py=deploy/curves/curve.py \
 		--from-file=curve.csv="$curve" --from-file=step="$raw/step" --from-file=start="$raw/start" >/dev/null
 	for side in $sides; do

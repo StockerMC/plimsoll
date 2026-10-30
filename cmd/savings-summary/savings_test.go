@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"cmp"
+	"testing"
+)
 
 const mi = 1 << 20
 
@@ -9,8 +12,8 @@ func pod(t int64, uid string, spec, applied float64, restarts int) podSample {
 		appliedRequest: applied * mi, appliedLimit: applied * mi, resizing: spec != applied, restarts: restarts}
 }
 
-func deploy(t int64, ready int) deploySample {
-	return deploySample{time: t, workload: "w", desired: 2, ready: ready}
+func deploy(t int64, desired, ready int) deploySample {
+	return deploySample{time: t, workload: "w", desired: desired, ready: ready}
 }
 
 func term(uid, id, reason string) termination {
@@ -31,6 +34,10 @@ func TestSummarize(t *testing.T) {
 		ooms         int
 		resizes      int
 		replacements int
+		desired      int   // at the last sample; 0 is 2
+		end          int64 // scheduled end; 0 is 120
+		gaps         [][2]int64
+		lowerBound   bool // the kill count is incomplete
 	}{
 		{
 			name:     "completed in-place resize",
@@ -70,15 +77,46 @@ func TestSummarize(t *testing.T) {
 			terms:    []termination{term("a", "1", "OOMKilled")},
 			complete: true, after: 2048, ooms: 1, replacements: 1,
 		},
+		{
+			name:  "run cut short of the scheduled end",
+			pods:  []podSample{pod(105, "a", 512, 512, 1), pod(105, "b", 512, 512, 1), pod(120, "a", 512, 512, 1), pod(120, "b", 512, 512, 1)},
+			ready: 2,
+			terms: []termination{term("a", "1", "Error"), term("b", "2", "Error")},
+			end:   135, resizes: 2,
+		},
+		{
+			name:    "scaling down is not reclaimed",
+			pods:    []podSample{pod(105, "a", 1024, 1024, 0), pod(105, "b", 1024, 1024, 0), pod(120, "b", 1024, 1024, 0)},
+			ready:   1,
+			desired: 1,
+		},
+		{
+			name:     "restart matched only by another pod's termination",
+			pods:     []podSample{pod(105, "a", 1024, 1024, 0), pod(105, "b", 1024, 1024, 0), pod(120, "a", 1024, 1024, 1), pod(120, "c", 1024, 1024, 0)},
+			ready:    2,
+			terms:    []termination{term("b", "2", "Error")},
+			complete: true, after: 2048, replacements: 1, lowerBound: true,
+		},
+		{
+			name:     "pod deleted while the termination watch was down",
+			pods:     []podSample{pod(105, "a", 1024, 1024, 0), pod(105, "b", 1024, 1024, 0), pod(120, "b", 1024, 1024, 0), pod(120, "c", 1024, 1024, 0)},
+			ready:    2,
+			gaps:     [][2]int64{{108, 125}},
+			complete: true, after: 2048, replacements: 1, lowerBound: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			desired, end := cmp.Or(tt.desired, 2), cmp.Or(tt.end, 120)
 			r := run{
 				info:         map[string]string{"side": "s"},
 				switchTime:   100,
+				end:          end,
 				pods:         append(append([]podSample{}, warm...), tt.pods...),
-				deployments:  []deploySample{deploy(90, 2), deploy(105, 2), deploy(120, tt.ready)},
+				deployments:  []deploySample{deploy(90, 2, 2), deploy(105, 2, 2), deploy(120, desired, tt.ready)},
 				terminations: tt.terms,
+				watchLogged:  true,
+				watchGaps:    tt.gaps,
 			}
 			o := summarize(r, "w")
 			if o.before != 2048*mi {
@@ -87,8 +125,8 @@ func TestSummarize(t *testing.T) {
 			if o.complete != tt.complete || tt.complete && o.after != tt.after*mi {
 				t.Errorf("after = %v MiB complete %v, want %v complete %v", o.after/mi, o.complete, tt.after, tt.complete)
 			}
-			if o.ooms != tt.ooms || !o.killsComplete {
-				t.Errorf("ooms = %d complete %v, want %d complete", o.ooms, o.killsComplete, tt.ooms)
+			if o.ooms != tt.ooms || o.killsComplete == tt.lowerBound {
+				t.Errorf("ooms = %d complete %v, want %d complete %v", o.ooms, o.killsComplete, tt.ooms, !tt.lowerBound)
 			}
 			if o.resizes != tt.resizes || o.replacements != tt.replacements {
 				t.Errorf("resizes, replacements = %d, %d, want %d, %d", o.resizes, o.replacements, tt.resizes, tt.replacements)

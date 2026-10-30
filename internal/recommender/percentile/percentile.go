@@ -37,6 +37,7 @@ type Recommender struct {
 	first     time.Time
 	last      time.Time
 	samples   int
+	pruned    time.Time
 }
 
 var _ recommender.Recommender = (*Recommender)(nil)
@@ -76,6 +77,22 @@ func (r *Recommender) Observe(s recommender.Sample) {
 	}
 	if s.Time.After(r.last) {
 		r.last = s.Time
+	}
+	r.prune()
+}
+
+// prune drops tasks whose last window closed a whole aggregation interval
+// ago, as upstream garbage collects the container states of deleted pods. Their
+// peaks stay in the histogram.
+func (r *Recommender) prune() {
+	if r.last.Before(r.pruned.Add(r.opts.AggregationInterval)) {
+		return
+	}
+	r.pruned = r.last
+	for name, s := range r.instances {
+		if !s.windowEnd.After(r.last.Add(-r.opts.AggregationInterval)) {
+			delete(r.instances, name)
+		}
 	}
 }
 

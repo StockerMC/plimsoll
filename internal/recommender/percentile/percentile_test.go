@@ -1,6 +1,7 @@
 package percentile
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -129,5 +130,24 @@ func TestAggregationIntervalOption(t *testing.T) {
 	}
 	if got := r.peaks.Percentile(1); got != 6 {
 		t.Errorf("Percentile(1) = %v, want 6 (top of bucket 5)", got)
+	}
+}
+
+// A rolling deployment brings a new pod name every window; the per-task state
+// must not grow with them, and the histogram must keep their peaks.
+func TestPodTurnoverIsPruned(t *testing.T) {
+	opts := Options{Buckets: memoryOptions, SamplesPerDay: 24, AggregationInterval: time.Hour, HalfLife: 24 * time.Hour}
+	rolling, steady := New(opts), New(opts)
+	for i := range 24 * 30 {
+		at := day0.Add(time.Duration(i) * time.Hour)
+		peak := 1e8 + float64(i%7)*1e7
+		rolling.Observe(recommender.Sample{Time: at, Peaks: one(fmt.Sprint("pod-", i), peak)})
+		steady.Observe(recommender.Sample{Time: at, Peaks: one("pod", peak)})
+	}
+	if n := len(rolling.instances); n > 3 {
+		t.Errorf("%d tasks kept after 720 pod names, want at most 3", n)
+	}
+	if got, want := rolling.Recommend().Target, steady.Recommend().Target; got != want {
+		t.Errorf("target %v with pod turnover, want %v as for one pod", got, want)
 	}
 }

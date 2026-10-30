@@ -1,0 +1,6 @@
+commit 5c7fb6ce0372d74f120832cb9ed71432d648d4fd
+recommender f98143cc25ddd0dd0eec376e61a05dfab184ddf7be3128f128a585c11390ae28
+flags --vpa-object-namespace=restart-2026-10-30 --memory-window=15s --recommender-interval=15s
+held --ensemble-fall-windows=24; nockpt --checkpoints=false
+tick 15s restart 1260s duration 1920s
+started 2026-10-30T15:52:11Z

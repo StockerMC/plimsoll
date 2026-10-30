@@ -68,6 +68,7 @@ func TestSummarize(t *testing.T) {
 0,,,,,0,,0,,0,
 15,,250Mi,250Mi,,0,,0,,0,
 30,,480Mi,500Mi,300Mi,1,OOMKilled,1,OOMKilled,1,Error
+37,,450Mi,500Mi,,,,1,OOMKilled,1,Error
 45,,450Mi,500Mi,,2,OOMKilled,1,OOMKilled,2,OOMKilled`
 	sides, series, err := readSeries(strings.NewReader(csv))
 	if err != nil {

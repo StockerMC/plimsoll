@@ -56,6 +56,7 @@ func readSeries(r io.Reader) (sides []string, series []sample, err error) {
 				}
 				s.target[i] = float64(q.Value())
 			}
+			s.restarts[i] = -1
 			if field := row[2+n+2*i]; field != "" {
 				if s.restarts[i], err = strconv.Atoi(field); err != nil {
 					return nil, nil, fmt.Errorf("restarts %q: %w", field, err)

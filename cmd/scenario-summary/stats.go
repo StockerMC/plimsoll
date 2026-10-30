@@ -10,14 +10,20 @@ type stats struct {
 
 func summarize(series []sample, side int, tol float64) stats {
 	st := stats{min: math.Inf(1), settle: -1}
-	for i, s := range series {
+	last := -1
+	for _, s := range series {
 		if t := s.target[side]; t > 0 {
 			st.min = math.Min(st.min, t)
 			st.max = math.Max(st.max, t)
 		}
-		// Several restarts between two samples all count as the last reason.
-		if i > 0 && s.reason[side] == "OOMKilled" {
-			st.oomKills += max(s.restarts[side]-series[i-1].restarts[side], 0)
+		// A missing sample is skipped rather than read as zero restarts, which
+		// would count every earlier kill again at the next sample. Several
+		// restarts between two samples all count as the last reason.
+		if r := s.restarts[side]; r >= 0 {
+			if last >= 0 && s.reason[side] == "OOMKilled" {
+				st.oomKills += max(r-last, 0)
+			}
+			last = r
 		}
 	}
 	if len(series) == 0 || series[len(series)-1].target[side] == 0 {

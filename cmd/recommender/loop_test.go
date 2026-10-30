@@ -47,18 +47,9 @@ func demoPod(t *testing.T, restarts int32) *unstructured.Unstructured {
 	return &unstructured.Unstructured{Object: obj}
 }
 
-// An OOM kill while metrics-server is down must still raise the target, and
-// the pass must still report the metrics error.
-func TestOOMWhileMetricsAreDown(t *testing.T) {
-	vpa := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "autoscaling.k8s.io/v1",
-		"kind":       "VerticalPodAutoscaler",
-		"metadata":   map[string]any{"namespace": "default", "name": "demo", "uid": "uid-1"},
-		"spec": map[string]any{
-			"targetRef":    map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "name": "demo"},
-			"recommenders": []any{map[string]any{"name": "plimsoll"}},
-		},
-	}}
+// newDownLoop serves vpa, the demo Deployment and pod with metrics-server
+// failing every read.
+func newDownLoop(t *testing.T, vpa *unstructured.Unstructured) (*loop, *fake.FakeDynamicClient) {
 	deployment := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
@@ -83,13 +74,60 @@ func TestOOMWhileMetricsAreDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l := &loop{
+	return &loop{
 		client: client,
 		name:   "plimsoll",
 		window: 5 * time.Minute,
 		opts:   percentile.Options{Buckets: buckets, SamplesPerDay: 288, MinMemory: 250 << 20},
 		vpas:   make(map[types.UID]*vpaState),
+	}, client
+}
+
+func demoVPA() *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "autoscaling.k8s.io/v1",
+		"kind":       "VerticalPodAutoscaler",
+		"metadata":   map[string]any{"namespace": "default", "name": "demo", "uid": "uid-1"},
+		"spec": map[string]any{
+			"targetRef":    map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "name": "demo"},
+			"recommenders": []any{map[string]any{"name": "plimsoll"}},
+		},
+	}}
+}
+
+func statusTarget(t *testing.T, client *fake.FakeDynamicClient) string {
+	got, err := client.Resource(vpaResource).Namespace("default").Get(context.Background(), "demo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
 	}
+	recs, _, _ := unstructured.NestedSlice(got.Object, "status", "recommendation", "containerRecommendations")
+	if len(recs) != 1 {
+		t.Fatalf("got %d container recommendations, want 1", len(recs))
+	}
+	target, _, _ := unstructured.NestedString(recs[0].(map[string]any), "target", "memory")
+	return target
+}
+
+// A restart with no usage and no OOM yet must not replace a VPA's target
+// with the floor.
+func TestStartupWithoutMetricsKeepsTarget(t *testing.T) {
+	vpa := demoVPA()
+	vpa.Object["status"] = map[string]any{"recommendation": map[string]any{"containerRecommendations": []any{
+		map[string]any{"containerName": "app", "target": map[string]any{"memory": "1Gi"}},
+	}}}
+	l, client := newDownLoop(t, vpa)
+	if err := l.runOnce(context.Background()); err == nil {
+		t.Fatal("want the metrics error")
+	}
+	if got := statusTarget(t, client); got != "1Gi" {
+		t.Errorf("target %s after a pass with no history, want 1Gi kept", got)
+	}
+}
+
+// An OOM kill while metrics-server is down must still raise the target, and
+// the pass must still report the metrics error.
+func TestOOMWhileMetricsAreDown(t *testing.T) {
+	l, client := newDownLoop(t, demoVPA())
 	ctx := context.Background()
 	if err := l.runOnce(ctx); err == nil {
 		t.Fatal("first pass: want the metrics error")
@@ -100,15 +138,7 @@ func TestOOMWhileMetricsAreDown(t *testing.T) {
 	if err := l.runOnce(ctx); err == nil {
 		t.Fatal("second pass: want the metrics error")
 	}
-	got, err := client.Resource(vpaResource).Namespace("default").Get(ctx, "demo", metav1.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	recs, _, _ := unstructured.NestedSlice(got.Object, "status", "recommendation", "containerRecommendations")
-	if len(recs) != 1 {
-		t.Fatalf("got %d container recommendations, want 1", len(recs))
-	}
-	target, _, _ := unstructured.NestedString(recs[0].(map[string]any), "target", "memory")
+	target := statusTarget(t, client)
 	// 300Mi request plus upstream's 100 MiB bump, before the safety margin.
 	if q := resource.MustParse(target); q.Value() < 400<<20 {
 		t.Errorf("target %s after an OOM at 300Mi, want at least 400Mi", target)

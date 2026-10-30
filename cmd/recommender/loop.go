@@ -54,6 +54,9 @@ type container struct {
 	restored bool
 	// Last checkpoint written, to skip writes when nothing changed.
 	saved []byte
+	// Set once a window, an OOM or a restored checkpoint backs the model;
+	// before that its recommendation is only the floor.
+	supported bool
 }
 
 func (l *loop) runOnce(ctx context.Context) error {
@@ -118,6 +121,7 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 		}
 		for _, s := range c.windows.AddAll(readings) {
 			c.model.Observe(s)
+			c.supported = true
 		}
 		for _, o := range ooms {
 			if o.Container == name {
@@ -131,6 +135,12 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 		if p.Skip {
 			continue
 		}
+		if !c.supported {
+			if old, ok := kube.CurrentRecommendation(vpa, name); ok {
+				rec.ContainerRecommendations = append(rec.ContainerRecommendations, old)
+			}
+			continue
+		}
 		r := c.model.Recommend()
 		r.Target, r.Lower, r.Upper = p.Cap(r.Target), p.Cap(r.Lower), p.Cap(r.Upper)
 		rec.ContainerRecommendations = append(rec.ContainerRecommendations, kube.ContainerRecommendation{
@@ -141,6 +151,10 @@ func (l *loop) update(ctx context.Context, vpa *unstructured.Unstructured) error
 		})
 		log.Printf("%s/%s %s: target %s lower %s upper %s", vpa.GetNamespace(), vpa.GetName(), name,
 			quantity(r.Target), quantity(r.Lower), quantity(r.Upper))
+	}
+	if !slices.ContainsFunc(target.Containers, func(name string) bool { return st.containers[name].supported }) {
+		log.Printf("%s/%s: no completed window yet, status left as it is", vpa.GetNamespace(), vpa.GetName())
+		return usageErr
 	}
 	return errors.Join(usageErr, kube.PatchStatus(ctx, l.client, vpa, kube.ProvidedStatus(vpa, rec, time.Now())))
 }
@@ -217,6 +231,7 @@ func (l *loop) restore(ctx context.Context, vpa *unstructured.Unstructured, name
 		log.Printf("checkpoint %s/%s %s: %v", vpa.GetNamespace(), vpa.GetName(), name, err)
 		return nil
 	}
+	c.supported = true
 	log.Printf("checkpoint %s/%s %s: restored %d samples from %s", vpa.GetNamespace(), vpa.GetName(), name,
 		saved.Samples, saved.First.Format(time.RFC3339))
 	return nil
@@ -248,6 +263,7 @@ func (l *loop) recordOOM(c *container, o kube.OOM) {
 		log.Printf("oom %s/%s: %v", o.Pod, o.Container, err)
 		return
 	}
+	c.supported = true
 	log.Printf("oom %s/%s at %s: recorded request %s", o.Pod, o.Container, o.Time.Format(time.TimeOnly), quantity(o.Request))
 }
 

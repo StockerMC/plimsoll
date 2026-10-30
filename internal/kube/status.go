@@ -3,6 +3,8 @@ package kube
 import (
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -62,4 +64,19 @@ func providedSince(vpa *unstructured.Unstructured, now time.Time) metav1.Time {
 		}
 	}
 	return metav1.NewTime(now)
+}
+
+// CurrentRecommendation is the recommendation the VPA's status holds for
+// container, if any.
+func CurrentRecommendation(vpa *unstructured.Unstructured, container string) (ContainerRecommendation, bool) {
+	recs, _, _ := unstructured.NestedSlice(vpa.Object, "status", "recommendation", "containerRecommendations")
+	for _, r := range recs {
+		m, _ := r.(map[string]any)
+		var rec ContainerRecommendation
+		if m["containerName"] != container || runtime.DefaultUnstructuredConverter.FromUnstructured(m, &rec) != nil {
+			continue
+		}
+		return rec, true
+	}
+	return ContainerRecommendation{}, false
 }

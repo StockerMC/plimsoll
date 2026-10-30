@@ -39,7 +39,7 @@ stop_bg() {
 }
 trap stop_bg EXIT
 
-pods_path='{range .items[*]}{.metadata.labels.app},{.metadata.name},{.metadata.uid},{.metadata.deletionTimestamp},{.status.conditions[?(@.type=="Ready")].status},{.spec.containers[0].resources.requests.memory},{.spec.containers[0].resources.limits.memory},{.status.containerStatuses[0].resources.requests.memory},{.status.containerStatuses[0].resources.limits.memory},{.status.conditions[?(@.type=="PodResizeInProgress")].status},{.status.conditions[?(@.type=="PodResizePending")].status},{.status.containerStatuses[0].restartCount}{"\n"}{end}'
+pods_path='{range .items[*]}{.metadata.labels.app},{.metadata.name},{.metadata.uid},{.metadata.deletionTimestamp},{.status.conditions[?(@.type=="Ready")].status},{.spec.containers[0].resources.requests.memory},{.spec.containers[0].resources.limits.memory},{.status.containerStatuses[0].resources.requests.memory},{.status.containerStatuses[0].resources.limits.memory},{.status.conditions[?(@.type=="PodResizeInProgress")].status},{.status.conditions[?(@.type=="PodResizePending")].status},{.status.containerStatuses[0].restartCount},{.status.containerStatuses[0].name}{"\n"}{end}'
 deploy_path='{range .items[*]}{.metadata.name},{.spec.replicas},{.status.readyReplicas}{"\n"}{end}'
 vpa_path='{range .items[*]}{.metadata.name},{.status.recommendation.containerRecommendations[0].target.memory},{.spec.updatePolicy.updateMode}{"\n"}{end}'
 term='{.metadata.labels.app},{.metadata.uid},{.status.containerStatuses[0].name},{.status.containerStatuses[0].@.terminated.containerID},{.status.containerStatuses[0].@.terminated.reason},{.status.containerStatuses[0].@.terminated.exitCode},{.status.containerStatuses[0].@.terminated.finishedAt}{"\n"}'
@@ -52,12 +52,16 @@ sample() {
 	kubectl -n "$ns" get pods -o jsonpath="$pods_path" | prefix "$now" >>"$dir/pods.csv"
 	kubectl -n "$ns" get deploy -o jsonpath="$deploy_path" | prefix "$now" >>"$dir/deployments.csv"
 	kubectl -n "$ns" get vpa -o jsonpath="$vpa_path" | prefix "$now" >>"$dir/vpas.csv"
+	kubectl -n "$ns" top pods --containers --no-headers 2>/dev/null | awk -v t="$now" '{print t "," $1 "," $2 "," $4}' >>"$dir/usage.csv" || true
 }
 
-# Pods deleted between samples still show their terminations here; kubectl re-lists on reconnect.
+# Pods deleted between samples still show their terminations here; kubectl re-lists on reconnect, and
+# watch.csv records each outage so a pod deleted during one makes the kill count a lower bound.
 watch_terminations() {
 	while :; do
+		echo "start,$(date +%s)" >>"$dir/watch.csv"
 		kubectl -n "$ns" get pods --watch -o jsonpath="$term_path" 2>>"$dir/watch.log" | grep --line-buffered -v '^[^,]*,[^,]*,[^,]*,,' || true
+		echo "exit,$(date +%s)" >>"$dir/watch.csv"
 		sleep 1
 	done >>"$dir/terminations.csv"
 }
@@ -100,10 +104,12 @@ SHAPE
 	done
 	kubectl -n "$ns" apply -f deploy/savings/memload.yaml -f "$dir/manifest.yaml" >/dev/null
 	kubectl -n "$ns" wait --for=condition=Available deploy --all --timeout=5m >/dev/null
-	echo "time,workload,pod,uid,deleting,ready,spec_request,spec_limit,applied_request,applied_limit,resize_in_progress,resize_pending,restarts" >"$dir/pods.csv"
+	echo "time,workload,pod,uid,deleting,ready,spec_request,spec_limit,applied_request,applied_limit,resize_in_progress,resize_pending,restarts,container" >"$dir/pods.csv"
 	echo "time,workload,desired,ready" >"$dir/deployments.csv"
 	echo "time,workload,target,mode" >"$dir/vpas.csv"
 	echo "workload,uid,container,container_id,reason,exit_code,finished_at" >"$dir/terminations.csv"
+	echo "time,pod,container,memory" >"$dir/usage.csv"
+	echo "event,time" >"$dir/watch.csv"
 	watch_terminations &
 	watcher=$!
 	if [ -n "$name" ]; then
@@ -119,6 +125,8 @@ SHAPE
 		echo "recommender_flags=$flags --vpa-object-namespace=$ns --memory-window=1m"
 		go version -m "$recommender" | awk '$1 == "build" && $2 ~ /^vcs\.(revision|modified)=/ {print "binary_" $2}'
 		echo "binary_sha256=$(shasum -a 256 "$recommender" | cut -d' ' -f1)"
+		echo "off_s=$off_s"
+		echo "on_s=$on_s"
 		echo "upstream_recommender_pod=$(kubectl -n kube-system get pod -l app=vpa-recommender -o jsonpath='{.items[*].metadata.uid}')"
 		echo "updater_args=$(kubectl -n kube-system get deploy vpa-updater -o jsonpath='{.spec.template.spec.containers[0].args}')"
 		echo "begin=$begin"

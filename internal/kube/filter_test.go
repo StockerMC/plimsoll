@@ -14,7 +14,8 @@ func newVPA(namespace, name string, recommenders ...string) unstructured.Unstruc
 	return unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "autoscaling.k8s.io/v1",
 		"kind":       "VerticalPodAutoscaler",
-		"metadata":   map[string]any{"namespace": namespace, "name": name, "generation": int64(1)},
+		"metadata": map[string]any{"namespace": namespace, "name": name, "generation": int64(1),
+			"uid": namespace + "/" + name, "resourceVersion": "1"},
 		"spec": map[string]any{
 			"targetRef":    map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "name": name},
 			"recommenders": selectors,

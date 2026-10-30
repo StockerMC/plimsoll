@@ -87,7 +87,7 @@ func demoVPA() *unstructured.Unstructured {
 	return &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "autoscaling.k8s.io/v1",
 		"kind":       "VerticalPodAutoscaler",
-		"metadata":   map[string]any{"namespace": "default", "name": "demo", "uid": "uid-1"},
+		"metadata":   map[string]any{"namespace": "default", "name": "demo", "uid": "uid-1", "resourceVersion": "1"},
 		"spec": map[string]any{
 			"targetRef":    map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "name": "demo"},
 			"recommenders": []any{map[string]any{"name": "plimsoll"}},

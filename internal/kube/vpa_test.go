@@ -128,6 +128,42 @@ func TestPatchStatus(t *testing.T) {
 	}
 }
 
+// A status computed from one read of a VPA must not land on the VPA once it
+// was recreated under the same name or handed to another recommender.
+func TestPatchStatusRefusesChangedVPA(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(vpa *unstructured.Unstructured)
+	}{
+		{"recreated", func(vpa *unstructured.Unstructured) { vpa.SetUID("default/demo-2") }},
+		{"reassigned", func(vpa *unstructured.Unstructured) {
+			vpa.Object["spec"].(map[string]any)["recommenders"] = []any{map[string]any{"name": "other"}}
+			vpa.SetResourceVersion("2")
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			read := newVPA("default", "demo", "plimsoll")
+			client := newClient(read.DeepCopy())
+			now := newVPA("default", "demo", "plimsoll")
+			tt.change(&now)
+			if err := client.Tracker().Update(vpaResource, &now, "default"); err != nil {
+				t.Fatal(err)
+			}
+			if err := PatchStatus(context.Background(), client, &read, ProvidedStatus(&read, Recommendation{}, time.Now())); err == nil {
+				t.Fatal("patch of a changed VPA succeeded")
+			}
+			got, err := client.Resource(vpaResource).Namespace("default").Get(context.Background(), "demo", metav1.GetOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, found := got.Object["status"]; found {
+				t.Errorf("status written to the changed VPA: %v", got.Object["status"])
+			}
+		})
+	}
+}
+
 func TestProvidedStatusKeepsTransitionTime(t *testing.T) {
 	vpa := newVPA("default", "demo", "plimsoll")
 	vpa.Object["status"] = map[string]any{"conditions": []any{map[string]any{

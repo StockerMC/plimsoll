@@ -68,8 +68,14 @@ func LookupTarget(ctx context.Context, client dynamic.Interface, vpa *unstructur
 
 // PatchStatus replaces a VPA's status. The CRD serves status as a subresource,
 // so the patch has to go through it; against the main resource it is dropped.
+// The patch fails if the VPA was recreated or changed since it was read, so a
+// recommendation computed for the old object is never written to the new one.
 func PatchStatus(ctx context.Context, client dynamic.Interface, vpa *unstructured.Unstructured, status Status) error {
-	patch, err := json.Marshal([]map[string]any{{"op": "add", "path": "/status", "value": status}})
+	patch, err := json.Marshal([]map[string]any{
+		{"op": "test", "path": "/metadata/uid", "value": vpa.GetUID()},
+		{"op": "test", "path": "/metadata/resourceVersion", "value": vpa.GetResourceVersion()},
+		{"op": "add", "path": "/status", "value": status},
+	})
 	if err != nil {
 		return fmt.Errorf("marshal status: %w", err)
 	}

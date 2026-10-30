@@ -96,7 +96,7 @@ var scenarioFormat = format{
 }
 
 var traceFormat = format{
-	note:   fmt.Sprintf("One row per curve and recommender, VPAs in Off mode. scored: 15 s samples with both a target and a `kubectl top` usage; exceedance: scored samples with usage above the target; slack: mean (target - usage) / target over the scored samples. `kubectl top` carries no timestamp and lags the curve by 15 to 60 s, so a target can already include the usage it is scored against: this is a concurrent comparison, not a test of prediction ahead of time. The pods have no memory limit, so oom_kills only shows the curve ran uninterrupted. settle_s: seconds from the start until the target stays within %.0f%% of its final value.", tolerance*100),
+	note:   fmt.Sprintf("One row per curve and recommender. scored: 15 s samples with both a target and a `kubectl top` usage; exceedance: scored samples with usage above the target; slack: mean (target - usage) / target over the scored samples. `kubectl top` carries no timestamp and lags the curve by 15 to 60 s, so a target can already include the usage it is scored against: this is a concurrent comparison, not a test of prediction ahead of time. oom_kills: restarts sampled with reason OOMKilled; in updateMode Off the pods have no memory limit, so it only shows the curve ran uninterrupted. settle_s: seconds from the start until the target stays within %.0f%% of its final value.", tolerance*100),
 	header: []string{"curve", "recommender", "scored", "exceedance", "mean_slack", "oom_kills", "settle_s"},
 	columns: func(r result) []string {
 		return []string{r.scenario, r.side, strconv.Itoa(r.scored), strconv.Itoa(r.over), strconv.FormatFloat(r.slack, 'f', 4, 64), strconv.Itoa(r.oomKills), settleText(r)}

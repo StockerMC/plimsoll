@@ -44,7 +44,7 @@ jobs:
           for _ in $(seq 24); do
             sleep 10
             target=$(kubectl get vpa demo -o jsonpath='{.status.recommendation.containerRecommendations[0].target.memory}')
-            if [ -n "$target" ] && [ "$(numfmt --from=iec-i "$target")" -gt $((250 << 20)) ]; then
+            if [ -n "$target" ] && [ "$(numfmt --from=auto "$target")" -gt $((250 << 20)) ]; then
               echo "target $target"
               exit 0
             fi

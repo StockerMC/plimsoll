@@ -18,3 +18,18 @@ PASS iff both:
 Anything else, including a refused or mismatched comparison, is NOT CONFIRMED.
 
 Reported either way, not gates: memory-time change, limit-change ratio, win fraction, collection, group, day and window counts, user/logical-name overlap with cell a, the updater pair, and every other frozen recommender.
+
+## Outcome
+
+PASS. Runs at eeed277 (`celle-2026-10-30-*`), primary pair reproduced byte for byte from a clean build. 312 collections in 306 groups, 9,048 scored collection-days, 31,762,818 instance-windows.
+
+| gate | ensemble-ratio | percentile-tuned | result |
+|---|---|---|---|
+| paired slack difference, 95% CI | -0.0189 [-0.0256, -0.0122] | | upper end < 0 |
+| exceedance windows per collection-day | 0.1252 | 0.6387 | ratio 0.196 <= 1.0 |
+
+Not gates: memory-time +3.66%, limit changes 0.905x, win fraction 0.099 (strictly lower slack and no more exceedance on 31 of 312 collections). 38 of 306 groups (43 collections) share a user and logical name with the cell a sample.
+
+Updater pair, secondary, not confirmed: -0.0111 [-0.0179, -0.0038] slack at 1.64x the exceedance windows and 1.36x the limit changes, memory-time +7.15%.
+
+The exceedance ratio is a total, and the total is concentrated: percentile-tuned's 10 worst collections hold 5,210 of its 5,779 exceedance windows. Per collection, ensemble-ratio has more exceedance windows on 228 of 312 collections and fewer on 48 (median 3 vs 0); without those 10 collections it has 1,110 vs 569 (1.95x). It cuts the large overruns and adds small ones elsewhere. Slack is lower on 231 of 312 collections.

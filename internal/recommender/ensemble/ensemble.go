@@ -44,7 +44,7 @@ type Options struct {
 
 var (
 	halfLives = []time.Duration{6 * time.Hour, 12 * time.Hour, 24 * time.Hour, 48 * time.Hour, 7 * 24 * time.Hour}
-	margins   = []float64{0, 0.05, 0.10, 0.15, 0.25}
+	margins   = []float64{0.05, 0.10, 0.15, 0.25}
 	// DefaultWeights and DefaultDecay are the selector's globals.
 	DefaultWeights = ml.Weights{Overrun: 5, Underrun: 1, LimitChange: 0.1, ModelChange: 0.1}
 )

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -186,7 +187,7 @@ func writeMarkdown(w io.Writer, outcomes []outcome) {
 		if t.complete {
 			after, pct = mib(t.after), percent(t.before, t.after)
 			if upstream != nil && upstream.complete {
-				vs = strconv.FormatFloat(((t.before-t.after)-(upstream.before-upstream.after))/(1<<20), 'f', 0, 64)
+				vs = mib((t.before - t.after) - (upstream.before - upstream.after))
 			}
 		}
 		row(t.side, strconv.Itoa(t.workloads), mib(t.before), after, pct, vs, kills(t.ooms, t.killsComplete), strconv.Itoa(t.oomsOff),
@@ -212,5 +213,6 @@ func percent(before, after float64) string {
 }
 
 func mib(bytes float64) string {
-	return strconv.FormatFloat(bytes/(1<<20), 'f', 0, 64)
+	// Rounding a tiny negative difference would print "-0".
+	return strconv.FormatFloat(math.Round(bytes/(1<<20))+0, 'f', 0, 64)
 }

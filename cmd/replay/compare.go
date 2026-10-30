@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"math"
@@ -50,9 +51,9 @@ type comparison struct {
 }
 
 type collectionRow struct {
-	group                      string
-	days, exceedances, changes int
-	slack, memoryTime          float64
+	group                               string
+	windows, days, exceedances, changes int
+	slack, memoryTime                   float64
 }
 
 func compareRuns(candidate, baseline, out string) error {
@@ -82,9 +83,18 @@ func compareRuns(candidate, baseline, out string) error {
 	var diffs, cSlack, bSlack []float64
 	var cMem, bMem float64
 	var cExceed, bExceed, cChanges, bChanges, days, wins int
+	if len(cand) != len(base) {
+		return fmt.Errorf("%s has %d collections, %s has %d", cs.RunID, len(cand), bs.RunID, len(base))
+	}
 	for _, id := range slices.Sorted(maps.Keys(cand)) {
 		x, y := cand[id], base[id]
-		if _, ok := base[id]; !ok || x.days == 0 || y.days == 0 {
+		if _, ok := base[id]; !ok {
+			return fmt.Errorf("collection %d is in %s but not %s", id, cs.RunID, bs.RunID)
+		}
+		if x.group != y.group || x.days != y.days || x.windows != y.windows {
+			return fmt.Errorf("collection %d: group, days or windows differ between %s and %s", id, cs.RunID, bs.RunID)
+		}
+		if x.days == 0 {
 			continue
 		}
 		c.Collections++
@@ -159,20 +169,32 @@ func readCollections(path string) (map[int64]collectionRow, error) {
 	for i, name := range rows[0] {
 		col[name] = i
 	}
-	out := make(map[int64]collectionRow, len(rows)-1)
-	for _, r := range rows[1:] {
-		id, err := strconv.ParseInt(r[col["collection_id"]], 10, 64)
-		if err != nil {
-			return nil, err
+	for _, name := range []string{"collection_id", "group", "windows", "days", "exceedances", "changes", "mean_slack", "memory_time"} {
+		if _, ok := col[name]; !ok {
+			return nil, fmt.Errorf("%s: no %s column", path, name)
 		}
-		var x collectionRow
-		x.group = r[col["group"]]
-		x.days, _ = strconv.Atoi(r[col["days"]])
-		x.exceedances, _ = strconv.Atoi(r[col["exceedances"]])
-		x.changes, _ = strconv.Atoi(r[col["changes"]])
-		x.slack, _ = strconv.ParseFloat(r[col["mean_slack"]], 64)
-		x.memoryTime, _ = strconv.ParseFloat(r[col["memory_time"]], 64)
-		out[id] = x
+	}
+	out := make(map[int64]collectionRow, len(rows)-1)
+	for i, r := range rows[1:] {
+		id, errID := strconv.ParseInt(r[col["collection_id"]], 10, 64)
+		windows, errWindows := strconv.Atoi(r[col["windows"]])
+		days, errDays := strconv.Atoi(r[col["days"]])
+		exceedances, errExceed := strconv.Atoi(r[col["exceedances"]])
+		changes, errChanges := strconv.Atoi(r[col["changes"]])
+		// A collection with no scored day has no slack and is skipped.
+		slack, errSlack := math.NaN(), error(nil)
+		if days != 0 || r[col["mean_slack"]] != "" {
+			slack, errSlack = strconv.ParseFloat(r[col["mean_slack"]], 64)
+		}
+		memoryTime, errMem := strconv.ParseFloat(r[col["memory_time"]], 64)
+		if err := errors.Join(errID, errWindows, errDays, errExceed, errChanges, errSlack, errMem); err != nil {
+			return nil, fmt.Errorf("%s row %d: %w", path, i+2, err)
+		}
+		if _, dup := out[id]; dup {
+			return nil, fmt.Errorf("%s: collection %d appears twice", path, id)
+		}
+		out[id] = collectionRow{group: r[col["group"]], windows: windows, days: days, exceedances: exceedances,
+			changes: changes, slack: slack, memoryTime: memoryTime}
 	}
 	return out, nil
 }

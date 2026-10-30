@@ -13,12 +13,16 @@ DAYS = 31
 
 
 def main():
-    d = sys.argv[1] if len(sys.argv) > 1 else "data/cell-a"
-    t = {n: pd.read_csv(os.path.join(d, f"{n}.csv.gz")) for n in ("a_collections", "a_sample", "a_events", "a_usage")}
+    if len(sys.argv) < 2:
+        sys.exit("usage: check_extract.py CELL [DIR]")
+    cell = sys.argv[1]
+    d = sys.argv[2] if len(sys.argv) > 2 else f"data/cell-{cell}"
+    path = {n: os.path.join(d, f"{cell}_{n}.csv.gz") for n in ("collections", "sample", "events", "usage")}
+    t = {n: pd.read_csv(p) for n, p in path.items()}
     for n, df in t.items():
-        print(f"{n}: {len(df)} rows, {os.path.getsize(os.path.join(d, n + '.csv.gz'))} bytes gzip")
+        print(f"{cell}_{n}: {len(df)} rows, {os.path.getsize(path[n])} bytes gzip")
 
-    s, u, e = t["a_sample"], t["a_usage"], t["a_events"]
+    s, u, e = t["sample"], t["usage"], t["events"]
     print("sample collections by vertical_scaling:", s.groupby("vertical_scaling").size().to_dict())
     print("sample instances by vertical_scaling:", s.groupby("vertical_scaling")["n_instances"].sum().to_dict())
     print("sample collections with a memory change by vertical_scaling:",

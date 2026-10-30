@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-var sides = []string{"plimsoll", "ensemble", "held", "upstream"}
+var sides = []string{"plimsoll", "ensemble", "held", "ratio", "upstream"}
 
 func main() {
 	if len(os.Args) != 3 {

@@ -1,0 +1,37 @@
+cella-2026-10-30-percentile-every: 203 collections, 5887 days, slack 0.2739 (median 0.2388), exceedance/day 1.6297 (0.0946% of 10146348 instance-windows), changes/day 0.8101, free days 0.939, memory-time 4.243e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1517 1:0.1517 2:0.1517 12:0.1520], post-update [0:0.1916 1:0.1915 2:0.1919 12:0.1969], agreement 0.068
+cella-2026-10-30-percentile-updater: 203 collections, 5887 days, slack 0.2718 (median 0.2368), exceedance/day 1.9701 (0.1143% of 10146348 instance-windows), changes/day 0.2804, free days 0.933, memory-time 4.26824e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1524 1:0.1523 2:0.1523 12:0.1520], post-update [0:0.1889 1:0.1885 2:0.1882 12:0.1865], agreement 0.031
+cella-2026-10-30-percentile-tuned-every: 203 collections, 5887 days, slack 0.2843 (median 0.2454), exceedance/day 0.3244 (0.0188% of 10146348 instance-windows), changes/day 0.3807, free days 0.964, memory-time 4.30857e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1945 1:0.1945 2:0.1945 12:0.1944], post-update [0:0.2178 1:0.2174 2:0.2172 12:0.2166], agreement 0.045
+cella-2026-10-30-percentile-tuned-updater: 203 collections, 5887 days, slack 0.2766 (median 0.2375), exceedance/day 1.1006 (0.0639% of 10146348 instance-windows), changes/day 0.1755, free days 0.956, memory-time 4.29777e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1888 1:0.1888 2:0.1887 12:0.1884], post-update [0:0.2101 1:0.2095 2:0.2090 12:0.2039], agreement 0.020
+cella-2026-10-30-window-every: 203 collections, 5887 days, slack 0.2455 (median 0.2122), exceedance/day 1.0956 (0.0636% of 10146348 instance-windows), changes/day 0.4204, free days 0.874, memory-time 4.30952e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1771 1:0.1771 2:0.1770 12:0.1767], post-update [0:0.2052 1:0.2041 2:0.2030 12:0.1992], agreement 0.028
+cella-2026-10-30-window-updater: 203 collections, 5887 days, slack 0.2486 (median 0.2199), exceedance/day 2.3864 (0.1385% of 10146348 instance-windows), changes/day 0.0826, free days 0.881, memory-time 4.32208e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1841 1:0.1840 2:0.1839 12:0.1834], post-update [0:0.2171 1:0.2159 2:0.2147 12:0.2063], agreement 0.008
+cella-2026-10-30-ml-every: 203 collections, 5887 days, slack 0.2704 (median 0.2277), exceedance/day 0.6163 (0.0358% of 10146348 instance-windows), changes/day 0.0629, free days 0.912, memory-time 4.69932e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.3130 1:0.3129 2:0.3129 12:0.3126], post-update [0:0.3246 1:0.3233 2:0.3222 12:0.3145], agreement 0.014
+cella-2026-10-30-ml-updater: 203 collections, 5887 days, slack 0.2590 (median 0.2153), exceedance/day 2.4423 (0.1417% of 10146348 instance-windows), changes/day 0.0319, free days 0.895, memory-time 4.64525e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.3086 1:0.3085 2:0.3085 12:0.3081], post-update [0:0.3211 1:0.3197 2:0.3186 12:0.3096], agreement 0.007
+cella-2026-10-30-ensemble-every: 203 collections, 5887 days, slack 0.2727 (median 0.2272), exceedance/day 0.5315 (0.0308% of 10146348 instance-windows), changes/day 0.0797, free days 0.910, memory-time 4.70281e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.3015 1:0.3014 2:0.3014 12:0.3011], post-update [0:0.3162 1:0.3148 2:0.3137 12:0.3074], agreement 0.017
+cella-2026-10-30-ensemble-updater: 203 collections, 5887 days, slack 0.2611 (median 0.2157), exceedance/day 2.1215 (0.1231% of 10146348 instance-windows), changes/day 0.0353, free days 0.890, memory-time 4.65214e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2961 1:0.2961 2:0.2960 12:0.2957], post-update [0:0.3121 1:0.3107 2:0.3095 12:0.3017], agreement 0.009
+cella-2026-10-30-ensemble-held-every: 203 collections, 5887 days, slack 0.2912 (median 0.2545), exceedance/day 0.0768 (0.0045% of 10146348 instance-windows), changes/day 0.3656, free days 0.969, memory-time 4.82949e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2663 1:0.2662 2:0.2662 12:0.2663], post-update [0:0.2938 1:0.2932 2:0.2930 12:0.2944], agreement 0.061
+cella-2026-10-30-ensemble-held-updater: 203 collections, 5887 days, slack 0.2899 (median 0.2525), exceedance/day 0.3185 (0.0185% of 10146348 instance-windows), changes/day 0.1823, free days 0.960, memory-time 4.79039e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2635 1:0.2635 2:0.2634 12:0.2631], post-update [0:0.2878 1:0.2871 2:0.2865 12:0.2816], agreement 0.035
+cella-2026-10-30-ensemble-ratio-every: 203 collections, 5887 days, slack 0.2623 (median 0.2095), exceedance/day 0.1266 (0.0073% of 10146348 instance-windows), changes/day 0.3729, free days 0.901, memory-time 4.60701e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.3127 1:0.3129 2:0.3130 12:0.3147], post-update [0:0.3504 1:0.3531 2:0.3568 12:0.3983], agreement 0.050
+cella-2026-10-30-ensemble-ratio-updater: 203 collections, 5887 days, slack 0.2601 (median 0.2101), exceedance/day 2.1386 (0.1241% of 10146348 instance-windows), changes/day 0.2247, free days 0.882, memory-time 4.59606e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.3174 1:0.3175 2:0.3176 12:0.3187], post-update [0:0.3495 1:0.3517 2:0.3543 12:0.3814], agreement 0.021
+cella-2026-10-30-assigned-every: 203 collections, 5887 days, slack 0.4384 (median 0.3425), exceedance/day 1.8993 (0.1102% of 10146348 instance-windows), changes/day 2.0516, free days 0.967, memory-time 5.50633e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2516 1:0.2515 2:0.2514 12:0.2514], post-update [0:0.2918 1:0.2913 2:0.2909 12:0.2916], agreement 0.262
+cella-2026-10-30-assigned-updater: 203 collections, 5887 days, slack 0.4369 (median 0.3418), exceedance/day 3.8283 (0.2221% of 10146348 instance-windows), changes/day 0.0870, free days 0.953, memory-time 5.51008e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.2757 1:0.2756 2:0.2754 12:0.2744], post-update [0:0.3288 1:0.3277 2:0.3257 12:0.3069], agreement 0.019
+cella-2026-10-30-naive-every: 203 collections, 5887 days, slack 0.2705 (median 0.2253), exceedance/day 0.0768 (0.0045% of 10146348 instance-windows), changes/day 1.7695, free days 0.955, memory-time 4.58731e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1545 1:0.1544 2:0.1544 12:0.1547], post-update [0:0.1890 1:0.1890 2:0.1896 12:0.1966], agreement 0.122
+cella-2026-10-30-naive-updater: 203 collections, 5887 days, slack 0.2647 (median 0.2209), exceedance/day 0.7736 (0.0449% of 10146348 instance-windows), changes/day 0.2156, free days 0.946, memory-time 4.54666e+07
+  tracking fully_automated: 107 collections, 7802 updates, error by lag [0:0.1549 1:0.1549 2:0.1548 12:0.1543], post-update [0:0.1824 1:0.1820 2:0.1817 12:0.1786], agreement 0.027
+18 runs over 203 collections in 71.3 s, 457730 windows/s

@@ -1,0 +1,54 @@
+# Rendered by scripts/trace-kind.sh: NAME, RECOMMENDER, MODE. Plays the curve in the namespace's curve ConfigMap.
+# In updateMode Off the script drops the limit and resize policy, as in the first trace runs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: NAME
+  template:
+    metadata:
+      labels:
+        app: NAME
+    spec:
+      containers:
+        - name: memload
+          image: python:3.13-alpine
+          command: ["python3", "-u", "/curve/curve.py"]
+          volumeMounts:
+            - name: curve
+              mountPath: /curve
+          resizePolicy:
+            - resourceName: memory
+              restartPolicy: RestartContainer
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: curve
+          configMap:
+            name: curve
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: NAME
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: NAME
+  recommenders:
+    - name: RECOMMENDER
+  updatePolicy:
+    updateMode: "MODE"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: "*"
+        controlledResources: ["memory"]
+        controlledValues: RequestsAndLimits

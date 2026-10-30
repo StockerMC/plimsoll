@@ -53,6 +53,14 @@ set_upstream_args() {
 	kubectl -n kube-system rollout status deployment/vpa-recommender --timeout=3m >/dev/null
 }
 
+# sed -i takes different arguments on BSD and GNU.
+edit() {
+	f=$1
+	shift
+	sed "$@" "$f" >"$f.tmp"
+	mv "$f.tmp" "$f"
+}
+
 saved_args=$(upstream_args)
 restored=
 pids=
@@ -98,10 +106,10 @@ for curve in $curves; do
 		esac
 		sed -e "s/NAME/$side/g" -e "s/RECOMMENDER/$name/" -e "s/MODE/$mode/" deploy/curves/workload.yaml >"$raw/$ns-$side.yaml"
 		if [ -z "$name" ]; then
-			sed -i '' '/recommenders:/{N;d;}' "$raw/$ns-$side.yaml"
+			edit "$raw/$ns-$side.yaml" '/recommenders:/{N;d;}'
 		fi
 		if [ "$mode" = Off ]; then
-			sed -i '' -e '/limits:/{N;d;}' -e '/resizePolicy:/{N;N;d;}' "$raw/$ns-$side.yaml"
+			edit "$raw/$ns-$side.yaml" -e '/limits:/{N;d;}' -e '/resizePolicy:/{N;N;d;}'
 		fi
 		kubectl -n "$ns" apply -f "$raw/$ns-$side.yaml" >/dev/null
 	done

@@ -98,7 +98,8 @@ $shape
 SHAPE
 		sed -e "s/NAME/$w/g" -e "s/\"MIB\"/\"$mib\"/" -e "s/REQUEST/$req/g" -e "s/RECOMMENDER/$name/" deploy/savings/workload.yaml >"$dir/$w.yaml"
 		if [ -z "$name" ]; then
-			sed -i '' '/recommenders:/{N;d;}' "$dir/$w.yaml"
+			sed '/recommenders:/{N;d;}' "$dir/$w.yaml" >"$dir/$w.yaml.tmp"
+			mv "$dir/$w.yaml.tmp" "$dir/$w.yaml"
 		fi
 		cat "$dir/$w.yaml" >>"$dir/manifest.yaml"
 		echo --- >>"$dir/manifest.yaml"

@@ -37,6 +37,7 @@ func TestSummarize(t *testing.T) {
 		desired      int   // at the last sample; 0 is 2
 		end          int64 // scheduled end; 0 is 120
 		gaps         [][2]int64
+		late         []deploySample
 		lowerBound   bool // the kill count is incomplete
 	}{
 		{
@@ -82,7 +83,21 @@ func TestSummarize(t *testing.T) {
 			pods:  []podSample{pod(105, "a", 512, 512, 1), pod(105, "b", 512, 512, 1), pod(120, "a", 512, 512, 1), pod(120, "b", 512, 512, 1)},
 			ready: 2,
 			terms: []termination{term("a", "1", "Error"), term("b", "2", "Error")},
-			end:   135, resizes: 2,
+			end:   135, resizes: 2, lowerBound: true,
+		},
+		{
+			name:  "resize completed after the scheduled end",
+			pods:  []podSample{pod(105, "a", 512, 1024, 0), pod(105, "b", 1024, 1024, 0), pod(120, "a", 512, 1024, 0), pod(120, "b", 1024, 1024, 0), pod(135, "a", 512, 512, 1), pod(135, "b", 1024, 1024, 0)},
+			ready: 2,
+			late:  []deploySample{deploy(135, 2, 2)},
+		},
+		{
+			name:       "no sample near the scheduled end",
+			pods:       []podSample{pod(105, "a", 1024, 1024, 0), pod(105, "b", 1024, 1024, 0), pod(140, "a", 1024, 1024, 0), pod(140, "b", 1024, 1024, 0)},
+			ready:      2,
+			late:       []deploySample{deploy(140, 2, 2)},
+			end:        125,
+			lowerBound: true,
 		},
 		{
 			name:    "scaling down is not reclaimed",
@@ -113,7 +128,7 @@ func TestSummarize(t *testing.T) {
 				switchTime:   100,
 				end:          end,
 				pods:         append(append([]podSample{}, warm...), tt.pods...),
-				deployments:  []deploySample{deploy(90, 2, 2), deploy(105, 2, 2), deploy(120, desired, tt.ready)},
+				deployments:  append([]deploySample{deploy(90, 2, 2), deploy(105, 2, 2), deploy(120, desired, tt.ready)}, tt.late...),
 				terminations: tt.terms,
 				watchLogged:  true,
 				watchGaps:    tt.gaps,

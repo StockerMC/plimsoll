@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"slices"
 	"time"
 )
@@ -29,8 +30,9 @@ func parseTime(s string) (int64, error) {
 }
 
 // summarize scores one workload. Before is the last fully Ready sample before the switch; after is
-// the sample at the scheduled end, and only counts when the desired replicas never changed from
-// before and every one is Ready with no resize pending and applied resources equal to spec.
+// the first sample within one tick from the scheduled end, and only counts when the desired replicas
+// never changed from before and every one is Ready with no resize pending and applied resources equal
+// to spec. Nothing after that sample, or after the scheduled end when it is missing, is counted.
 func summarize(r run, workload string) outcome {
 	o := outcome{side: r.info["side"], workload: workload, target: r.targets[workload], killsComplete: r.watchLogged}
 	deploys := map[int64]deploySample{}
@@ -56,6 +58,17 @@ func summarize(r run, workload string) outcome {
 		}
 	}
 	slices.Sort(times)
+	var endpoint int64
+	horizon := int64(math.MaxInt64)
+	if r.end > 0 {
+		horizon = r.end
+		if i, _ := slices.BinarySearch(times, r.end); i < len(times) && times[i] < r.end+tick {
+			endpoint, horizon = times[i], times[i]
+		} else {
+			o.killsComplete = false
+		}
+	}
+	times = slices.DeleteFunc(times, func(t int64) bool { return t > horizon })
 
 	settled := func(t int64) (float64, bool) {
 		d, ok := deploys[t]
@@ -135,14 +148,14 @@ func summarize(r run, workload string) outcome {
 			o.exposurePodMin += float64(len(byTime[t])) * tick / 60
 		}
 	}
-	if n := len(times); n > 0 && r.end > 0 && times[n-1] >= r.end && !replicasChanged {
-		o.after, o.complete = settled(times[n-1])
+	if endpoint != 0 && !replicasChanged {
+		o.after, o.complete = settled(endpoint)
 	}
 
 	seen := map[[3]string]bool{}
 	for _, t := range r.terminations {
 		key := [3]string{t.uid, t.container, t.containerID}
-		if t.workload != workload || seen[key] {
+		if t.workload != workload || seen[key] || t.finished > horizon {
 			continue
 		}
 		seen[key] = true

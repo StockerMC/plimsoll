@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Usage: RUN=cella-<unique-id> replay-all.sh sweep|report|compare
-# sweep tunes on the tune split and writes results/summary/sweep-$RUN.csv;
+# Usage: RUN=cella-<unique-id> [CELL=a] replay-all.sh sweep|report|compare
+# sweep tunes on the tune split of cell a and writes results/summary/sweep-$RUN.csv;
 # the chosen rows are copied into configs/default.json by hand and committed
-# before report runs on the report split.
+# before report runs on the report split. Any other cell is held out whole:
+# report replays all of its collections with the frozen config.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -10,6 +11,13 @@ prefix=${RUN:?set RUN to an explicit unique run prefix}
 case $prefix in
 *[!a-zA-Z0-9_-]*) echo "RUN must contain only letters, digits, underscores or hyphens" >&2; exit 1 ;;
 esac
+cell=${CELL:-a}
+case $cell in
+a) split=report ;;
+[b-h]) split=all ;;
+*) echo "CELL must be one of a to h" >&2; exit 1 ;;
+esac
+extract=(--data "data/cell-$cell" --prefix "${cell}_" --cell "$cell")
 
 build() {
 	go build -o bin/replay ./cmd/replay
@@ -17,6 +25,7 @@ build() {
 
 case ${1:?usage: replay-all.sh sweep|report|compare} in
 sweep)
+	[ "$cell" = a ] || { echo "sweep runs on cell a only" >&2; exit 1; }
 	out=results/summary/sweep-$prefix.csv
 	(set -C; : > "$out")
 	build
@@ -30,7 +39,7 @@ report)
 	mkdir -p results/raw
 	mkdir "results/raw/$prefix"
 	build
-	bin/replay --split report --params configs/default.json --run-prefix "$prefix" \
+	bin/replay "${extract[@]}" --split "$split" --params configs/default.json --run-prefix "$prefix" \
 		--recommender percentile,percentile-tuned,window,ml,ensemble,ensemble-held,ensemble-ratio,assigned,naive \
 		--actuator every,updater --raw "results/raw/$prefix" | tee "results/summary/$prefix-report.log"
 	;;

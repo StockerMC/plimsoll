@@ -1,10 +1,10 @@
 # data
 
-Not committed except this file. `data/cell-a/` holds the cell a extract of the Borg 2019 trace (ClusterData2019, CC-BY 4.0).
+Not committed except this file. `data/cell-a/` and `data/cell-e/` hold the cell a and cell e extracts of the Borg 2019 trace (ClusterData2019, CC-BY 4.0). Cell a is for tuning and exploration; cell e is held out for confirmation.
 
 ## Pull
 
-Pulled 2026-10-28 into BigQuery project `vpa-ensemble` (sandbox, no billing account) with `scripts/bq-extract.sh`, which runs `tools/bq/q1_collections.sql` to `q4_usage.sql` against `google.com:google-cluster-data.clusterdata_2019_a`, each dry-run first and billed under a byte cap. Tables written to dataset `vpa-ensemble:borg` (60-day expiration). Downloaded with `tools/bq/pull.py` through the BigQuery Storage Read API, sorted, gzip CSV.
+Pulled 2026-10-28 into BigQuery project `vpa-ensemble` (sandbox, no billing account) with `CELL=a scripts/bq-extract.sh`, which runs `tools/bq/q1_collections.sql` to `q4_usage.sql` against `google.com:google-cluster-data.clusterdata_2019_a`, each dry-run first and billed under a byte cap. Tables written to dataset `vpa-ensemble:borg` (60-day expiration). Downloaded with `tools/bq/pull.py a` through the BigQuery Storage Read API, sorted, gzip CSV.
 
 | query | cap (bytes) | dry run (bytes) | billed (bytes) | result rows |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Pulled 2026-10-28 into BigQuery project `vpa-ensemble` (sandbox, no billing acco
 | q1 audit: population collections with a termination before the end sentinel | 1e9 | 499,410,856 | 500,170,752 | 0 |
 | q4_usage | 4.5e11 | 423,885,513,512 | 423,885,799,424 | 24,036,193 |
 
-Total billed about 0.452 TiB of the 1 TiB monthly free tier. `instance_usage` is billed for the whole table's columns regardless of the WHERE clause: do not rerun q4 this month.
+Total billed about 0.452 TiB of the 1 TiB monthly free tier. `instance_usage` is billed for the whole table's columns regardless of the WHERE clause.
 
 ## Population and sample
 
@@ -60,3 +60,40 @@ Notes: collection 218403970713 (FULLY_AUTOMATED, 3 instances) is in the sample b
 ## Tune and report split
 
 Within cell a. A collection goes to `tune` or `report` by the low bit of FNV-1a over `user + "/" + logical_name` (over the decimal `collection_id` when either is empty), so collections of one logical job land on the same side. The same key is the bootstrap's resampling unit.
+
+## Cell e
+
+Pulled 2026-10-30 with `CELL=e scripts/bq-extract.sh` and `tools/bq/pull.py e`, the same queries with only the cell letter changed, after the replay config was frozen.
+
+| query | cap (bytes) | dry run (bytes) | billed (bytes) | result rows |
+|---|---|---|---|---|
+| q1_collections | 4e9 | 779,422,084 | 780,140,544 | 619 |
+| q2_events | 8e10 | 60,937,786,952 | 60,937,994,240 | 13,099,322 |
+| q3_sample | 2e10 | 524,049,620 | 524,288,000 | 313 |
+| q4_usage | 4.5e11 | 362,243,501,136 | 362,244,210,688 | 34,382,969 |
+
+Total billed 424,486,633,472 bytes (0.386 TiB); the month is at 0.838 TiB with cell a.
+
+Population 619 collections (fewer than cell a's 1,817), so the sample has 200 OFF and only 113 FULLY_AUTOMATED. Collection 62452601157 (FULLY_AUTOMATED, 3 instances) has no usage rows, so 312 collections replay. 38 of the 307 user/logical-name groups (43 collections) also appear in the cell a sample; collection IDs do not overlap.
+
+```
+e_collections: 619 rows, 31344 bytes gzip
+e_sample: 313 rows, 18800 bytes gzip
+e_events: 13099322 rows, 77316775 bytes gzip
+e_usage: 34382969 rows, 273475541 bytes gzip
+sample collections by vertical_scaling: {1: 200, 3: 113}
+sample instances by vertical_scaling: {1: 2606, 3: 1299}
+sample collections with a memory change by vertical_scaling: {1: 5, 3: 112}
+sample collections with no usage rows: 1
+usage collections: 312
+events collections: 619 of which in sample: 313
+max_mem null: 0 (0.000000%), zero: 2951 (0.008583%)
+assigned_memory zero or null: 0.005282%
+rows under 300 s: 1.7037%; over 300 s: 0
+start_time min/max: 300000000 2678990000000 (0.003 to 31.007 days)
+end_time max: 2679000000000 sentinel rows: 0
+rows with max_mem > assigned_memory: 0.4387%
+instance-windows (collection, instance, 300 s bucket): 33953976
+collection-windows (collection, 300 s bucket): 2785835
+collection-days (collection, trace day of start_time): 9672
+```

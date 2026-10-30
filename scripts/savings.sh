@@ -21,14 +21,7 @@ if [ -z "${RECOMMENDER:-}" ]; then
 	go build -o bin/recommender ./cmd/recommender
 fi
 
-# The live binary exposes only these held parameters; the rest must equal its built-in values.
-held_flags() {
-	jq -er '."ensemble-held" |
-		if (.decay | IN(0, 0.2)) and .underrun == 1 and .model_change == 0.1 and (.ratio_windows // 0) == 0
-		then "--ensemble-overrun-weight=\(.overrun) --ensemble-limit-change-weight=\(.limit_change) --ensemble-fall-fraction=\(.fall_fraction) --ensemble-fall-windows=\(.fall_windows)"
-		else error("ensemble-held sets a parameter the recommender has no flag for") end' "$config"
-}
-held=$(held_flags)
+held=$(scripts/held-flags.sh "$config")
 
 rec=
 start_rec() {

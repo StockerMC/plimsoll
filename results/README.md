@@ -2,7 +2,7 @@
 
 `results/raw/` is not committed: per-collection series and logs. `results/summary/` is: one directory per replay run, the sweep table, the comparisons, and the kind scenario runs.
 
-`trace-kind-<date>/` is `make trace-kind`: the three Borg curves in `deploy/curves/` played on kind at 60x, with the scoring explained in its `summary.md`. `kind-<date>/` holds VPA status snapshots from the demo.
+`kind-<date>/` holds VPA status snapshots from the demo.
 
 ## Replay runs
 

@@ -16,12 +16,11 @@ type sample struct {
 	target   []float64
 	restarts []int
 	reason   []string
-	usage    []float64 // trace runs only
 }
 
 // readSeries reads one scenario CSV. The header names the sides: elapsed_s,
 // event, one <side>_target per side, then <side>_restarts and <side>_reason
-// per side. A trace run adds curve_mib and one <side>_usage per side.
+// per side.
 func readSeries(r io.Reader) (sides []string, series []sample, err error) {
 	rows, err := csv.NewReader(r).ReadAll()
 	if err != nil {
@@ -37,7 +36,7 @@ func readSeries(r io.Reader) (sides []string, series []sample, err error) {
 	}
 	n := len(sides)
 	width := len(rows[0])
-	if n == 0 || (width != 2+3*n && width != 3+4*n) {
+	if n == 0 || width != 2+3*n {
 		return nil, nil, fmt.Errorf("header %v: want elapsed_s, event, then target, restarts and reason per side", rows[0])
 	}
 	for _, row := range rows[1:] {
@@ -64,28 +63,7 @@ func readSeries(r io.Reader) (sides []string, series []sample, err error) {
 			}
 			s.reason[i] = row[2+n+2*i+1]
 		}
-		if width > 2+3*n {
-			// The curve_mib column is for reading the CSV, not scored.
-			if s.usage, err = readUsage(row[3+3*n:]); err != nil {
-				return nil, nil, err
-			}
-		}
 		series = append(series, s)
 	}
 	return sides, series, nil
-}
-
-func readUsage(fields []string) ([]float64, error) {
-	usage := make([]float64, len(fields))
-	for i, field := range fields {
-		if field == "" {
-			continue
-		}
-		q, err := resource.ParseQuantity(field)
-		if err != nil {
-			return nil, fmt.Errorf("usage %q: %w", field, err)
-		}
-		usage[i] = float64(q.Value())
-	}
-	return usage, nil
 }

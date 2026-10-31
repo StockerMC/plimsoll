@@ -1,5 +1,6 @@
 #!/bin/sh
 # Usage: savings.sh RUN [side ...]
+# RATIO_FALL_WINDOWS replaces the ratio side's --ensemble-fall-windows.
 # Runs each side's workloads with updateMode Off, then switches to MODE and keeps sampling.
 set -eu
 cd "$(dirname "$0")/.."
@@ -22,6 +23,10 @@ if [ -z "${RECOMMENDER:-}" ]; then
 fi
 
 ratio=$(scripts/ensemble-flags.sh "$config" ensemble-ratio)
+# The config's fall hold is in replay windows; a run shorter than it never lets the ratio side fall.
+if [ -n "${RATIO_FALL_WINDOWS:-}" ]; then
+	ratio=$(echo "$ratio" | sed "s/--ensemble-fall-windows=[0-9]*/--ensemble-fall-windows=$RATIO_FALL_WINDOWS/")
+fi
 
 rec=
 start_rec() {

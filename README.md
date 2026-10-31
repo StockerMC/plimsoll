@@ -1,10 +1,10 @@
 # plimsoll
 
-A Kubernetes VPA custom recommender in Go for container memory. It serves two recommenders: a port of upstream VPA's decaying-histogram percentile recommender, with the OOM bump and checkpoints, and a reimplementation of the recommender from the Autopilot paper (Rzadca et al., EuroSys '20). Both run next to upstream's recommender on kind and are replayed against one cell of the Borg 2019 trace.
+A Kubernetes VPA custom recommender for container memory, in Go. It serves a port of upstream VPA's decaying-histogram percentile recommender and a reimplementation of the recommender from the Autopilot paper (Rzadca et al., EuroSys '20), both checkpointed so a restart keeps their targets. The same `Recommender` interface drives the live binary and a replay of the Borg 2019 trace, so the model that writes VPA status on kind is the one scored on the trace.
 
 ## How it plugs into VPA
 
-A VPA object opts in by naming a recommender:
+A VPA opts in by naming a recommender:
 
 ```yaml
 spec:
@@ -12,74 +12,69 @@ spec:
     - name: plimsoll           # or plimsoll-ensemble
 ```
 
-The binary reads memory usage from metrics-server, watches containers for `OOMKilled` restarts, and writes `status.recommendation` through the status subresource, capped by the VPA's memory `minAllowed` and `maxAllowed` and left out for containers in mode `Off` or without memory in `controlledResources`. Upstream's recommender ignores VPAs that name another recommender, and this one ignores VPAs that do not name it.
+The binary reads memory usage from metrics-server, watches for `OOMKilled` restarts, and writes `status.recommendation` through the status subresource, guarded by the VPA's UID and resourceVersion and capped by its memory `minAllowed`/`maxAllowed`. Upstream's recommender skips VPAs that name another recommender and this one skips the rest; upstream's updater and admission controller apply the result unchanged. State is saved in upstream's `VerticalPodAutoscalerCheckpoint` objects: the percentile histogram in the CRD's own fields, the ensemble's selector and arms in an annotation on the same object.
 
-`plimsoll-ensemble` reimplements the paper's ML recommender: arg-min models, each a decayed histogram read at the limit that minimizes a weighted overrun and underrun cost, and a selector that picks the model whose recent limits would have cost least, with the paper's moving-window statistic added as one more model it can pick. It departs from the paper's equations 4 to 8 in three ways: each model is scored on the limit it held before a window rather than the limit fitted on it, costs are divided by the window's task count, and margins are a fraction of the limit rather than added to it. [Escra](https://hunhoffe.github.io/assets/pdf/escra.pdf) (section VI-A) recreated the same recommender as a baseline; this one is in Go and shares one interface between the live binary and the replay.
+`plimsoll-ensemble` follows the paper: arg-min models, each a decayed histogram read at the limit that minimizes a weighted overrun and underrun cost, and a selector that picks the model whose recent limits would have cost least, with the paper's moving-window recommender as one more model. It departs from equations 4 to 8 in three ways: models are scored on the limit they held before a window, costs are divided by the window's task count, and margins multiply the limit. `ensemble-ratio` replaces the fixed margins with one learned per arm from recent peak-to-limit ratios and lets a recommendation fall only after the selector's recent max has stayed 5% lower for a day.
 
 ## Running
 
 Needs Go, Docker, kind and kubectl.
 
 ```
-make kind-up      # kind cluster, metrics-server, upstream VPA 1.8.1
-make demo         # memory-load pod with VPAs for ours and upstream's; DEMO=oom or DEMO=ensemble
-make scenarios    # side-by-side scenario suite
-RUN=cella-<unique-id> make replay STEP=report    # Borg replay; needs the extract in data/ (data/README.md)
-RUN=cella-<unique-id> make replay STEP=compare   # same RUN
+make kind-up                          # kind cluster, metrics-server, upstream VPA 1.8.1
+make demo                             # memory-load pod with VPAs for ours and upstream's; DEMO=oom or DEMO=ensemble
+scripts/restart.sh <run>              # restart every recommender mid-run
+scripts/vpa-actuation-up.sh && scripts/savings.sh <run>   # actuated savings run
+RUN=celle-<run> CELL=e make replay STEP=report   # Borg replay; needs the extract (data/README.md)
 make test
 ```
 
-## Scenario results
+## Results
 
-Three identical Deployments per scenario, VPAs in `Off` mode naming `plimsoll`, `plimsoll-ensemble` and upstream's recommender. Ours run with a 1-minute memory window. Targets in MiB, sampled every 15 s, from `results/summary/scenarios-2026-10-30/` at 64bfc21.
+Restart on kind, one run: steady 384 MiB workloads, 15 s windows, every recommender restarted at 1260 s and sampled for 660 s more (`results/summary/restart-2026-10-30/`).
 
-| scenario | final: ours / ensemble / upstream | min: ours / ensemble / upstream | OOM kills (each side) | settle s: ours / ensemble / upstream |
-| --- | --- | --- | --- | --- |
-| steady | 454 / 454 / 454 | 392 / 392 / 250 | 0 | 180 / 180 / 120 |
-| burst | 600 / 600 / 600 | 309 / 309 / 250 | 1 | 435 / 495 / 405 |
-| restart | 454 / 454 / 454 | 392 / 309 / 250 | 0 | 0 / 60 / 0 |
-| missing-metrics | 454 / 454 / 454 | 309 / 392 / 309 | 0 | 0 / 0 / 0 |
+| side | target before restart, MiB | lowest after, MiB | loss |
+| --- | --- | --- | --- |
+| percentile | 454 | 454 | 0% |
+| ensemble | 494 | 494 | 0% |
+| ensemble, checkpoints off | 494 | 415 | 16.0%, not recovered |
+| upstream | 454 | 454 | 0% |
 
-- steady: ramp to 384 MiB and hold. burst: 128 MiB base with spikes of +128, +256, +384 MiB against a 512 Mi limit. restart: all recommenders restarted at 4 min. missing-metrics: metrics-server scaled to 0 from 3 to 6 min.
-- Settle is seconds from the last event (or the start) until the target stays within 10% of its final value. Ours write no status until a usage window, an OOM or a checkpoint backs the model, so their minimums are the first measured target; upstream's 250 is its floor during warm-up.
-- On restart ours reloads its checkpoint from upstream's `VerticalPodAutoscalerCheckpoint` CRD and its target does not move. The ensemble has no checkpoint: it restarts cold but leaves its status alone until its first window closes, so it stayed at its pre-restart 309 through the restart and reached 454 at 300 s, the settle of 60 s.
-- No scenario outlasts the ensemble's 12-window cold start, so its rows are its cold-start rule, not the selector.
-- OOM kills are a property of the workload, the same on every side, since the VPAs are `Off`.
+Actuated savings on kind, one run: four steady workloads with two replicas each, started at 1.97x to 3.96x their measured peak with memory request equal to limit, 27 min in `Off` then 20 min in `InPlaceOrRecreate` under upstream's updater and admission controller (`results/summary/savings-2026-10-30/summary.md`). Each resize restarted its container; none evicted a pod. The percentage reclaimed is set mostly by the starting over-provisioning.
 
-## Replay on the Borg 2019 trace
-
-`cmd/replay` drives every recommender through the live binary's interface over five-minute memory peaks from cell a of the Borg 2019 trace: 399 long-running prod-tier collections of 2 to 50 tasks, split by a hash of user and logical name into 196 for tuning and 203 for reporting. The limit scored for a window is the one set before that window was observed. Each recommender runs under two actuation rules: `every` applies each new target, `updater` is a simplified form of upstream's updater (10% and 12 h). Report split, 5,887 collection-days, each a whole trace day after a 48 h cold start; definitions and every run in `results/README.md`.
-
-| recommender | slack, every | exceedance/day, every | changes/day, every | slack, updater | exceedance/day, updater | changes/day, updater |
+| recommender | requested MiB before | after | reclaimed | OOM kills | in-place resizes | pod replacements |
 | --- | --- | --- | --- | --- | --- | --- |
-| percentile, upstream defaults | 0.274 | 1.63 | 0.81 | 0.272 | 1.97 | 0.28 |
-| percentile, tuned | 0.284 | 0.32 | 0.38 | 0.277 | 1.10 | 0.18 |
-| moving window (paper) | 0.246 | 1.10 | 0.42 | 0.249 | 2.39 | 0.08 |
-| ML selector, arg-min models only | 0.270 | 0.62 | 0.06 | 0.259 | 2.44 | 0.03 |
-| ensemble | 0.273 | 0.53 | 0.08 | 0.261 | 2.12 | 0.04 |
-| ensemble-held | 0.291 | 0.08 | 0.37 | 0.290 | 0.32 | 0.18 |
-| ensemble-ratio | 0.262 | 0.13 | 0.37 | 0.260 | 2.14 | 0.22 |
-| 48 h max + 15% | 0.270 | 0.08 | 1.77 | 0.265 | 0.77 | 0.22 |
-| trace's own limit | 0.438 | 1.90 | 2.05 | 0.437 | 3.83 | 0.09 |
+| plimsoll (percentile) | 8192 | 3617 | 55.9% | 0 | 8 | 0 |
+| plimsoll-ensemble | 8192 | 3302 | 59.7% | 0 | 8 | 0 |
+| ensemble-ratio | 8192 | 3617 | 55.9% | 0 | 8 | 0 |
+| upstream | 8192 | 3617 | 55.9% | 0 | 8 | 0 |
 
-Slack is mean relative slack over collections, exceedance is limit-exceedance windows (simulated OOM proxy) per collection-day, changes are limit changes per collection-day. Runs `results/summary/cella-2026-10-30-*` at 64bfc21, comparisons in `cella-2026-10-30-comparisons/`.
+Replay on a held-out cell. Every parameter was tuned on half of cell a; the primary comparison and its pass rule were committed before cell e was pulled (`results/summary/protocol-celle-2026-10-30.md`). Cell e: 312 long-running prod-tier collections of 2 to 50 tasks in 306 user/logical-name groups, 9,048 scored collection-days, 31.8 M instance-windows of five-minute memory peaks; the limit scored for a window is the one set before that window was seen. Each new target is applied (`every`). Runs `results/summary/celle-2026-10-30-*`, comparisons in `celle-2026-10-30-comparisons/`; 18 runs in 175 s.
 
-Under `every` the ensemble's mean relative slack is 1.2 points below the tuned percentile baseline (paired difference -0.012, bootstrap 95% CI over collection groups [-0.023, +0.000]) at 1.6x its exceedance windows, 0.21x its limit changes and 9.2% more memory-time; the interval reaches zero, so there is no measured slack advantage. Under `updater` it is -0.016 [-0.028, -0.003] at 1.9x the exceedance windows and 8.3% more memory-time. The fixed-margin arms have no zero margin; with zero-margin arms (`cella-2026-10-28-*`) the ensemble had 14.4 points less slack than the tuned baseline at 27x its exceedance windows.
+| recommender | mean relative slack | vs tuned, 95% CI | limit-exceedance windows / collection-day | limit changes / collection-day | memory-time vs tuned |
+| --- | --- | --- | --- | --- | --- |
+| percentile, upstream defaults | 0.243 | | 4.05 | 0.86 | -2.5% |
+| percentile, tuned (baseline) | 0.256 | | 0.64 | 0.41 | 0% |
+| moving window (paper) | 0.226 | -0.0291 [-0.0373, -0.0208] | 0.93 | 0.29 | -4.9% |
+| arg-min models only (paper) | 0.243 | -0.0127 [-0.0233, -0.0017] | 0.97 | 0.06 | -3.8% |
+| ensemble | 0.243 | -0.0123 [-0.0225, -0.0016] | 0.90 | 0.07 | -4.3% |
+| ensemble-ratio | 0.237 | -0.0189 [-0.0256, -0.0122] | 0.13 | 0.37 | +3.7% |
+| 48 h max + 15% | 0.250 | | 0.05 | 1.97 | +2.5% |
+| trace's own limit | 0.523 | | 15.60 | 2.25 | +56.6% |
 
-Beyond the paper, `ensemble-held` lets the recommendation fall only after the selector's hourly max has stayed 5% lower for a day. It loses: against the ensemble, the pre-registered comparison, 1.8 points more slack ([+0.007, +0.030]) for 0.14x its exceedance windows and 2.7% more memory-time; against the tuned baseline +0.007 [-0.002, +0.016] at 0.24x the exceedance windows and 12.1% more memory-time. `ensemble-ratio` adds a margin per arm learned from that arm's peak-to-limit ratios. Under `every` it has 2.2 points less slack than the tuned baseline ([-0.031, -0.012]) at 0.39x its exceedance windows, 0.98x its limit changes and 6.9% more memory-time, with lower slack at no more exceedance on 10% of collections; against `ensemble-held`, the pre-registered comparison, -0.029 [-0.037, -0.021] at 1.65x the exceedance windows and 4.6% less memory-time. Both were tuned on the tuning half only, but the ideas, and the removal of the zero-margin arms, came after earlier report runs. Under `updater` neither stays within the moving window's limit-change budget.
-
-On the 107 collections the trace marks `VERTICAL_SCALING_FULLY_AUTOMATED`, no recommender tracked the recorded request updates more closely than the 48 h running max (under `every`, mean absolute relative error against the previous window's request over the 12 windows after each update, averaged over collections: 0.189, against 0.192 for the upstream-default percentile and 0.316 for the ensemble). On the 96 collections with vertical scaling off, the same error against their recorded requests over all scored windows is 0.51 to 0.53 for every recommender.
+Slack is (mean limit minus p95 usage) over mean limit per collection-day, averaged over collections; the CI is a paired bootstrap over groups. Exceedance is limit-exceedance windows (simulated OOM proxy), not OOM kills. The pre-registered test, ensemble-ratio against the tuned baseline, passed both gates: slack CI below zero and total exceedance windows no higher (0.196x). It costs 3.7% more memory-time: slack is averaged per collection, memory-time is summed and dominated by the largest ones. The exceedance total is concentrated: the baseline's 10 worst collections hold 5,210 of its 5,779 windows, and per collection ensemble-ratio exceeds more often on 228 of 312. Under a simplified form of upstream's updater (change at 10% drift, at most every 12 h) it is not confirmed: 1.64x the exceedance windows. On cell a's report half, where it was developed, the same pair was -0.0220 [-0.0307, -0.0123] at 0.39x the exceedance windows and +6.9% memory-time (`results/summary/cella-2026-10-30-comparisons/`).
 
 ## Limitations
 
-- Memory only. No CPU.
-- The replay is open loop: a limit never changes the usage it is scored against, and Borg usage is already capped by the real limit (censored), so any max-plus-margin rule partly tracks the request by construction. Exceedance windows are a proxy, not OOM kills.
-- Tuning and reporting are two halves of one cell, not separate cells.
-- Trace memory is a fraction of an unpublished machine size, so no result is in bytes.
-- Every side has a 250 MiB floor; scenario minimums of 250 are that floor, not the workload.
-- Recommends only; actuation is upstream's. Tested only on kind with upstream VPA 1.8.1. The scenarios are single runs of minutes.
+- Memory only, no CPU.
+- The replay is open loop: a limit never changes the usage it is scored against, and Borg usage is already capped by the real limit, so any max-plus-margin rule partly tracks it by construction.
+- Cell e is another cell of the same trace month; 38 of its 306 groups share a user and logical name with cell a. The ensemble-ratio idea came after earlier cell a report runs.
+- Trace memory is a fraction of an unpublished machine size, so no replay result is in bytes.
+- Live results are single runs on kind with steady synthetic loads and upstream VPA 1.8.1. Requested memory is not physical memory, nodes or cost.
 
-Related: Red Hat's predictive VPA recommenders (openshift/predictive-vpa-recommenders) use the same `spec.recommenders` hook with Python forecasters.
+## Related work
+
+The [Autopilot paper](https://dl.acm.org/doi/10.1145/3342195.3387524) (Rzadca et al., EuroSys '20) describes the moving-window and ML recommenders reimplemented here. [Escra](https://hunhoffe.github.io/assets/pdf/escra.pdf) (section VI-A) recreated the same recommender as a baseline. Upstream [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler) is the source of the percentile port, the checkpoint CRD and the `spec.recommenders` hook; Red Hat's predictive-vpa-recommenders use the same hook with Python forecasters.
 
 ## License
 

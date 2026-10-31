@@ -3,6 +3,7 @@
 `results/raw/` is not committed: per-collection series and logs. `results/summary/` is: one directory per replay run, the sweep table, the comparisons, and the kind scenario runs.
 
 `kind-<date>/` holds VPA status snapshots from the demo.
+`restart-<run>/` holds the restart scenario's targets and checkpoint dumps; `savings-<run>/` the actuated savings run, with its definitions in `summary.md`.
 
 ## Replay runs
 
@@ -15,6 +16,10 @@ Recommenders: `percentile` (the upstream VPA port at upstream's defaults), `perc
 Actuators: `every` sets the limit to the target whenever it changes. `updater` is a simplified form of upstream VPA's updater: change when the request is outside the recommendation's bounds, or differs from the target by 10% or more and the last change is at least 12 h old (upstream checks pod age instead); the request starts at the trace's `assigned_memory` of the collection's first window. `window`, `ml`, `ensemble`, `ensemble-held`, `ensemble-ratio`, `assigned` and `naive` report bounds equal to their target, for which the bounds test would fire at every drift, so for them only the 10%/12 h rule applies.
 
 The numbers below are `cella-2026-10-30-*`: binary 64bfc21, the fixed-margin grid {5%, 10%, 15%, 25%} with no zero-margin arm, parameters from `sweep-*-margin-20261029.csv` frozen in `configs/default.json`. The grid change was made after earlier report runs had been seen. `cella-2026-10-28-*` and `compare-2026-10-28/` are the earlier runs with zero-margin arms, kept as history; their `percentile`, `percentile-tuned`, `window`, `assigned` and `naive` rows are byte-identical to the new ones.
+
+## Cell e
+
+`celle-2026-10-30-*` replay all 312 sampled collections of cell e with `configs/default.json` unchanged, under the protocol in `protocol-celle-2026-10-30.md`, committed before the extract was pulled. Its primary pair, `ensemble-ratio` vs `percentile-tuned` under `every`, passed; the outcome and its caveats are at the end of that file.
 
 ## ensemble-held
 

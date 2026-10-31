@@ -1,8 +1,7 @@
 # results
 
-`results/raw/` is not committed: per-collection series and logs. `results/summary/` is: one directory per replay run, the sweep table, the comparisons, and the kind scenario runs.
+`results/raw/` is not committed: per-collection series and logs. `results/summary/` is: one directory per replay run, the sweep tables, the comparisons, and the kind scenario runs.
 
-`kind-<date>/` holds VPA status snapshots from the demo.
 `restart-<run>/` holds the restart scenario's targets and checkpoint dumps; `savings-<run>/` the actuated savings run, with its definitions in `summary.md`.
 
 ## Replay runs

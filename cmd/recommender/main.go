@@ -33,8 +33,6 @@ func main() {
 	limitChangeWeight := flag.Float64("ensemble-limit-change-weight", ensemble.DefaultWeights.LimitChange, "selector cost weight on a change of limit")
 	ratioWindows := flag.Int("ensemble-ratio-windows", 0, "memory windows over which each arg-min arm learns its margin from its peak-to-limit ratios; 0 keeps the fixed margins")
 	ratioFloor := flag.Float64("ensemble-ratio-floor", 1, "floor on the learned margin, as a factor on the raw limit")
-	timeScale := flag.Float64("ensemble-time-scale", 1, "divide the ensemble's half-lives by this, for workloads that replay a trace faster than real time")
-	hourWindows := flag.Int("ensemble-hour-windows", 12, "memory windows in the ensemble's max and cold start, the paper's hour")
 	checkpoints := flag.Bool("checkpoints", true, "restore from and save to VerticalPodAutoscalerCheckpoint objects")
 	once := flag.Bool("once", false, "run one pass and exit")
 	flag.Parse()
@@ -76,8 +74,6 @@ func main() {
 			FallWindows:  *fallWindows,
 			RatioWindows: *ratioWindows,
 			RatioFloor:   *ratioFloor,
-			TimeScale:    *timeScale,
-			HourWindows:  *hourWindows,
 			Window:       *window,
 		},
 		checkpoints: *checkpoints,

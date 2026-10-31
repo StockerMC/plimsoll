@@ -37,11 +37,6 @@ type Options struct {
 	// least RatioFloor, instead of the grid of fixed margins.
 	RatioWindows int
 	RatioFloor   float64
-	// Divides every half-life, for workloads that replay a trace faster
-	// than real time; zero is 1.
-	TimeScale float64
-	// Windows in the selector's max and cold start; zero is hourWindows.
-	HourWindows int
 	// Length of one window. The selector only counts windows, but its
 	// saved state means something else under another length.
 	Window time.Duration
@@ -74,19 +69,10 @@ func New(o Options) *ml.Selector {
 	if costDecay == 0 {
 		costDecay = DefaultDecay
 	}
-	scale, hour := o.TimeScale, o.HourWindows
-	if scale == 0 {
-		scale = 1
-	}
-	if hour == 0 {
-		hour = hourWindows
-	}
-	o.Weights, o.Decay, o.TimeScale, o.HourWindows = weights, costDecay, scale, hour
-	scaled := func(d time.Duration) time.Duration { return time.Duration(float64(d) / scale) }
+	o.Weights, o.Decay = weights, costDecay
 	margin := window.StepMargin(o.LargeLimit)
 	var arms []ml.Arm
 	for _, hl := range halfLives {
-		hl = scaled(hl)
 		if o.RatioWindows > 0 {
 			arms = append(arms, ml.NewRatio(o.Buckets, ml.NewArgmin(o.Buckets, hl, 0, weights), o.RatioWindows, o.RatioFloor))
 			continue
@@ -99,7 +85,7 @@ func New(o Options) *ml.Selector {
 		// Only Limit() is read, so the arm needs no peak or hourly ring.
 		arms = append(arms, window.New(window.Options{
 			Buckets:    o.Buckets,
-			HalfLife:   scaled(windowHalfLife),
+			HalfLife:   windowHalfLife,
 			Stat:       window.Percentile,
 			Percentile: percentile,
 			Margin:     margin,
@@ -110,10 +96,10 @@ func New(o Options) *ml.Selector {
 		Arms:         arms,
 		Weights:      weights,
 		Decay:        costDecay,
-		MaxWindows:   hour,
+		MaxWindows:   hourWindows,
 		FallFraction: o.FallFraction,
 		FallWindows:  o.FallWindows,
-		ColdWindows:  hour,
+		ColdWindows:  hourWindows,
 		Margin:       margin,
 		MinMemory:    o.MinMemory,
 		OOMMinBump:   o.OOMMinBump,

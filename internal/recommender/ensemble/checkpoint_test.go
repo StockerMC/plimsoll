@@ -18,7 +18,7 @@ func options(t *testing.T) Options {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Options{Buckets: buckets, MinMemory: 250 << 20, LargeLimit: 1 << 30, OOMMinBump: 100 << 20, TimeScale: 60}
+	return Options{Buckets: buckets, MinMemory: 250 << 20, LargeLimit: 1 << 30, OOMMinBump: 100 << 20}
 }
 
 // event is one window, or an OOM when oom is set.

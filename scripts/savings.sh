@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 run=$1
 shift
-[ $# -gt 0 ] || set -- plimsoll ensemble held ratio upstream
+[ $# -gt 0 ] || set -- plimsoll ensemble ratio upstream
 tick=15
 off_s=${OFF_S:-1620}
 on_s=${ON_S:-1200}
@@ -21,7 +21,6 @@ if [ -z "${RECOMMENDER:-}" ]; then
 	go build -o bin/recommender ./cmd/recommender
 fi
 
-held=$(scripts/ensemble-flags.sh "$config" ensemble-held)
 ratio=$(scripts/ensemble-flags.sh "$config" ensemble-ratio)
 
 rec=
@@ -85,7 +84,6 @@ side_run() {
 	case $side in
 	plimsoll) name=plimsoll flags="--recommender-name=plimsoll --ensemble-recommender-name=" ;;
 	ensemble) name=plimsoll-ensemble flags="--recommender-name=plimsoll --ensemble-recommender-name=plimsoll-ensemble" ;;
-	held) name=plimsoll-ensemble-held flags="--recommender-name=plimsoll-held-percentile-off --ensemble-recommender-name=plimsoll-ensemble-held $held" ;;
 	ratio) name=plimsoll-ensemble-ratio flags="--recommender-name=plimsoll-ratio-percentile-off --ensemble-recommender-name=plimsoll-ensemble-ratio $ratio" ;;
 	upstream) name= flags= ;;
 	*) echo "unknown side $side" >&2; exit 2 ;;

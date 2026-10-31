@@ -24,7 +24,7 @@ Needs Go, Docker, kind and kubectl.
 make kind-up                          # kind cluster, metrics-server, upstream VPA 1.8.1
 make demo                             # memory-load pod with VPAs for ours and upstream's; DEMO=oom or DEMO=ensemble
 scripts/restart.sh <run>              # restart every recommender mid-run
-scripts/vpa-actuation-up.sh && scripts/savings.sh <run>   # actuated savings run
+make savings SAVINGS=<run>            # upstream updater and admission, actuated savings run
 RUN=celle-<run> CELL=e make replay STEP=report   # Borg replay; needs the extract (data/README.md)
 make test
 ```

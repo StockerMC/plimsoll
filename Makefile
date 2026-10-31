@@ -1,4 +1,4 @@
-.PHONY: test vet kind-up kind-down smoke demo scenarios replay
+.PHONY: test vet kind-up kind-down smoke demo scenarios savings replay
 
 test: vet
 	go test ./...
@@ -20,6 +20,11 @@ demo:
 
 scenarios:
 	scripts/scenarios.sh $(SCENARIOS)
+
+savings:
+	scripts/vpa-actuation-up.sh
+	scripts/savings.sh $(SAVINGS)
+	go run ./cmd/savings-summary results/raw/savings-$(SAVINGS) results/summary/savings-$(SAVINGS)
 
 replay:
 	scripts/replay-all.sh $(STEP)
